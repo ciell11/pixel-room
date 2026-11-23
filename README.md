@@ -1,8 +1,10 @@
-# Pixel Room (Open Alpha `v0.1-alpha`)
+# Pixel Room — Marin Kitagawa (Open Alpha `v0.1-alpha`)
 
-A cozy 16-bit interactive pixel-art desktop room & companion built with Python + Pygame-CE (native `640×360` with crisp Nearest-Neighbor `2x`/`3x` scaling and multi-layer spring-damper physics).
+A cozy 16-bit interactive pixel-art desktop room & companion featuring **Marin Kitagawa** from *My Dress-Up Darling* (*Sono Bisque Doll wa Koi wo Suru*), built with Python + Pygame-CE (native `640×360` with crisp Nearest-Neighbor `2x`/`3x` scaling and multi-layer spring-damper physics).
 
 > **Download Windows Standalone `.exe` (No Python required):** grab `PixelRoom.exe` directly from the **[Releases](../../releases)** tab!
+>
+> *Unofficial non-commercial fan project. Marin Kitagawa and My Dress-Up Darling belong to Shinichi Fukuda / Square Enix.*
 
 ---
 
