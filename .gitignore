@@ -1,0 +1,18 @@
+# PyInstaller build artifacts
+build/
+dist/
+*.spec
+icon.png
+
+# Python bytecode & virtualenvs
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
