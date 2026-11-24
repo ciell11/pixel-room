@@ -3,7 +3,7 @@
 import os
 import sys
 
-VERSION = "v0.5.1-beta"
+VERSION = "v0.5.2-beta"
 VW, VH = 640, 360
 FLOOR_Y = 336
 BED_SIT_POS = (446.0, 294.0)

@@ -772,8 +772,8 @@ class CharacterPhysics:
                 py = int(round(self.pup[1]))
                 if emotion in ("blush", "flustered"):
                     px = -1 if self.pup[0] >= 0 else 1
-                hc.blit(iris, (OX - 7 - iw + px, OY - 159 - ih + py))
-                hc.blit(iris, (OX + 7 - iw + px, OY - 159 - ih + py))
+                hc.blit(iris, (OX - 8 - iw + px, OY - 154 - ih + py))
+                hc.blit(iris, (OX + 8 - iw + px, OY - 154 - ih + py))
 
         if accessory == 1:
             hc.blit(assets["acc_glasses"], (0, 0))
