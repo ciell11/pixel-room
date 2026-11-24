@@ -42,4 +42,4 @@ subprocess.check_call([
     "--exclude-module", "tkinter",
     "pixelroom.py",
 ], cwd=here)
-print("Built v0.5-beta:", os.path.join(here, "dist", "PixelRoom.exe"))
+print("Built v0.5.1-beta:", os.path.join(here, "dist", "PixelRoom.exe"))

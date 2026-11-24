@@ -212,27 +212,41 @@ def build_legs(outfit, pose="stand"):
     d = ImageDraw.Draw(img)
 
     if pose == "floor":
-        # Cute anime floor-sitting pose (knees tucked neatly sideways, resting at y=-46 so +46px shift seats her on FLOOR_Y!)
-        # Left & right thighs angled outward & slightly forward, folded calves tucked behind/beside knees
-        poly(d, [(-13, -82), (-23, -64), (-22, -50), (-8, -48), (-2, -62), (-2, -82)], SKIN)
-        poly(d, [(-21, -64), (-22, -50), (-15, -49), (-16, -64)], SKIN_SH)
-        poly(d, [(13, -82), (23, -64), (22, -50), (8, -48), (2, -62), (2, -82)], SKIN)
-        poly(d, [(16, -64), (23, -64), (22, -50), (15, -49)], SKIN_SH)
-        # Tucked calves & feet peeking neatly to the sides
-        for s in (-1, 1):
-            poly(d, [(s * 22, -58), (s * 28, -50), (s * 24, -45), (s * 14, -47)], SKIN)
-            ell(d, s * 16 - 2, -62, 4, 3, SKIN_HI)
-            if outfit in (0, 4):
-                poly(d, [(s * 20, -56), (s * 27, -50), (s * 23, -45), (s * 16, -48)], SOCK)
-                poly(d, [(s * 24, -52), (s * 30, -48), (s * 27, -44), (s * 21, -46)], SHOE)
-            elif outfit == 1:
-                poly(d, [(s * 23, -52), (s * 30, -48), (s * 27, -44), (s * 20, -46)], SLIP)
-            elif outfit == 2:
-                poly(d, [(s * 18, -60), (s * 27, -50), (s * 23, -45), (s * 14, -48)], SOCK)
-                poly(d, [(s * 24, -52), (s * 30, -48), (s * 27, -44), (s * 21, -46)], SNEAK)
-            else:
-                poly(d, [(s * 23, -52), (s * 30, -48), (s * 27, -44), (s * 20, -46)], WHITE)
-                rect(d, min(s * 24, s * 28), -49, 4, 2, MINT)
+        # Cute slender anime yokozuwari (side-sit / mermaid pose): knees neatly together, calves tucked to one side!
+        # Left thigh (viewer-left) angled gently toward center-left
+        poly(d, [(-11, -82), (-14, -66), (-11, -50), (-3, -49), (-1, -66), (-1, -82)], SKIN)
+        poly(d, [(-14, -66), (-11, -50), (-8, -50), (-10, -66)], SKIN_SH)
+        # Right thigh tucked neatly right next to left knee, angling slightly right
+        poly(d, [(0, -82), (11, -82), (13, -65), (9, -50), (-1, -50), (-2, -66)], SKIN)
+        poly(d, [(7, -82), (11, -82), (13, -65), (9, -50), (6, -50), (9, -65)], SKIN_SH)
+        # Subtle knee highlights (knees cleanly close together!)
+        ell(d, -9, -54, 4, 3, SKIN_HI)
+        ell(d, 2, -54, 4, 3, SKIN_HI)
+
+        # Both slender calves folded gracefully to viewer-right side (classic neat anime floor sit!)
+        # Back calf (from left knee tucked behind/beside right knee)
+        poly(d, [(6, -56), (20, -52), (24, -46), (11, -46)], SKIN)
+        # Front calf (from right knee curving neatly to right)
+        poly(d, [(9, -53), (23, -49), (26, -44), (10, -45)], SKIN)
+        poly(d, [(10, -47), (24, -46), (25, -44), (10, -45)], SKIN_SH)
+
+        # Outfit-matched socks & dainty tucked shoes/slippers on the side
+        if outfit in (0, 4):
+            poly(d, [(13, -53), (23, -49), (25, -44), (14, -45)], SOCK)
+            poly(d, [(21, -51), (28, -48), (27, -43), (20, -44)], SHOE)
+            rect(d, 22, -49, 4, 2, SHOE_HI)
+        elif outfit == 1:
+            poly(d, [(20, -51), (28, -48), (27, -43), (19, -44)], SLIP)
+            rect(d, 21, -49, 4, 2, SLIP_HI)
+        elif outfit == 2:
+            poly(d, [(11, -54), (23, -49), (25, -44), (12, -45)], SOCK)
+            line(d, (12, -52), (13, -46), WHITE, 1)
+            poly(d, [(21, -51), (28, -48), (27, -43), (20, -44)], SNEAK)
+            rect(d, 22, -45, 5, 2, SNEAK_HI)
+        else:
+            poly(d, [(18, -51), (23, -49), (24, -44), (18, -45)], WHITE)
+            poly(d, [(21, -51), (28, -48), (27, -43), (20, -44)], WHITE)
+            rect(d, 22, -47, 5, 2, MINT)
         return sel_out(img)
 
     if pose == "sit":
@@ -697,14 +711,28 @@ def build_arm(outfit, side, pose="idle"):
         poly(d, forearm, HOOD if hoodie else SKIN)
         ell(d, (16 if s == 1 else -23), -180, 7, 8, SKIN)
     elif pose == "manga":
-        # Holding open manga volume in front of lap while seated on the floor!
+        # Arms bent inward & forward visibly gripping the left/right sides of the open manga book!
         s = side
         c_main = HOOD if hoodie else (MINT if summer else SHIRT)
-        sleeve = [(s * 11, -128), (s * 18, -125), (s * 20, -108), (s * 13, -108), (s * 12, -117)]
+        c_sh = HOOD_SH if hoodie else (MINT_SH if summer else SHIRT_SH)
+        # Upper arm going down & forward from shoulder
+        sleeve = [(s * 11, -128), (s * 18, -125), (s * 21, -106), (s * 14, -106), (s * 12, -118)]
         poly(d, sleeve, c_main)
-        forearm = [(s * 14, -108), (s * 19, -108), (s * 14, -95), (s * 9, -95)]
+        line(d, (s * 18, -124), (s * 20, -107), c_sh, 1)
+        # Bent forearm angling cleanly INWARD across waist to hold the open book edges
+        forearm = [(s * 20, -107), (s * 14, -108), (s * 12, -96), (s * 19, -95)]
         poly(d, forearm, HOOD if hoodie else SKIN)
-        ell(d, (7 if s == 1 else -13), -98, 6, 5, SKIN)
+        # Cute hand & fingers gripping the outer edge of the manga at x = ±12..15, y = -101..-94
+        ell(d, (10 if s == 1 else -16), -101, 6, 6, SKIN)
+        rect(d, (10 if s == 1 else -12), -99, 2, 3, SKIN_HI)
+    elif pose == "manga_turn":
+        # Right hand lifted up toward upper page corner to flip a manga page!
+        c_main = HOOD if hoodie else (MINT if summer else SHIRT)
+        sleeve = [(11, -128), (18, -125), (21, -108), (14, -108), (12, -118)]
+        poly(d, sleeve, c_main)
+        forearm = [(19, -109), (14, -109), (6, -113), (8, -108), (16, -104)]
+        poly(d, forearm, HOOD if hoodie else SKIN)
+        ell(d, 3, -115, 6, 5, SKIN)
     elif pose == "phone":
         # Right hand holding a glowing 16-bit smartphone in front while sitting on bed!
         c_main = HOOD if hoodie else (MINT if summer else SHIRT)
@@ -735,58 +763,55 @@ def build_head_base():
     d.ellipse([OX - 2, OY - 137, OX + 2, OY - 133], outline=SILVER, width=1)
     rect(d, -1, -137, 1, 1, WHITE)
 
-    # Neatly tucked ears (NO bloated grey blocks sticking out of hair!)
-    ell(d, -16, -163, 3, 6, SKIN)
-    ell(d, 13, -163, 3, 6, SKIN)
+    # Neatly tucked ears (hugging slender anime face!)
+    ell(d, -15, -162, 3, 6, SKIN)
+    ell(d, 12, -162, 3, 6, SKIN)
 
-    # Soft, cute proportional anime head (~33px wide x 40px tall) with gentle rounded cheeks & soft chin
+    # Slender canon anime head oval: narrowed cheeks (-14..+14) tapering smoothly to a crisp V-chin!
     head_pts = (
-        bezier((-16, -169), (-16, -153), (-9, -145), 10) +
-        bezier((-9, -145), (0, -142), (9, -145), 10) +
-        bezier((9, -145), (16, -153), (16, -169), 10) +
-        bezier((16, -169), (15, -186), (0, -188), 10) +
-        bezier((0, -188), (-15, -186), (-16, -169), 10)
+        bezier((-14, -169), (-14, -156), (-7, -147), 10) +
+        bezier((-7, -147), (0, -141), (7, -147), 10) +
+        bezier((7, -147), (14, -156), (14, -169), 10) +
+        bezier((14, -169), (14, -186), (0, -188), 10) +
+        bezier((0, -188), (-14, -186), (-14, -169), 10)
     )
     poly(d, head_pts, SKIN)
-    poly(d, [(12, -170), (16, -168), (14, -154), (9, -146), (8, -148), (12, -157)], SKIN_SH)
-    rect(d, -14, -176, 28, 4, SKIN_SH)
+    poly(d, [(10, -170), (14, -168), (12, -156), (7, -147), (6, -149), (10, -158)], SKIN_SH)
+    rect(d, -13, -176, 26, 4, SKIN_SH)
 
     out = sel_out(img)
     # Paint dainty 1-2px silver earring studs/glints AFTER sel_out so they stay crisp & tiny!
     od = ImageDraw.Draw(out)
-    od.rectangle([OX - 16, OY - 158, OX - 15, OY - 157], fill=SILVER)
-    od.point((OX - 16, OY - 158), fill=WHITE)
-    od.rectangle([OX + 14, OY - 158, OX + 15, OY - 157], fill=SILVER)
-    od.point((OX + 15, OY - 158), fill=WHITE)
+    od.rectangle([OX - 15, OY - 157, OX - 14, OY - 156], fill=SILVER)
+    od.point((OX - 15, OY - 157), fill=WHITE)
+    od.rectangle([OX + 13, OY - 157, OX + 14, OY - 156], fill=SILVER)
+    od.point((OX + 14, OY - 157), fill=WHITE)
     return out
 
 
 def draw_almond_eye(d, cx, cy, side, wide=False):
-    """Cute, softer, rounder anime eye with gentle warm arch and delicate winged lashes."""
+    """Cute, luminous anime eye fitted cleanly inside Marin's slender face oval."""
     s = side  # -1 for viewer-left eye, +1 for viewer-right eye
     h = 10 if wide else 9
     in_x = cx - s * 4
-    out_x = cx + s * 5
+    out_x = cx + s * 4
     # Larger, softly rounded bright anime sclera
     sclera = [
         (in_x, cy),
         (cx - s * 2, cy - h // 2),
         (cx + s * 2, cy - h // 2),
         (out_x, cy - 1),
-        (cx + s * 3, cy + h // 2 - 1),
+        (cx + s * 2, cy + h // 2 - 1),
         (cx - s * 2, cy + h // 2 - 1),
     ]
     poly(d, sclera, WHITE)
-    # Soft 1px top sclera shade
     line(d, (cx - s * 2, cy - h // 2), (cx + s * 2, cy - h // 2), (232, 224, 238, 255), 1)
 
-    # Gentle rounded upper eyeliner (softer & sweeter anime arch!)
+    # Gentle rounded upper eyeliner with delicate winged outer eyelash flick
     line(d, (in_x, cy - 1), (cx - s * 2, cy - h // 2 - 1), LASH, 1)
     line(d, (cx - s * 2, cy - h // 2 - 1), (cx + s * 2, cy - h // 2 - 1), LASH, 2)
     line(d, (cx + s * 2, cy - h // 2 - 1), (out_x + s * 1, cy - 1), LASH, 2)
-    # Cute delicate outer eyelash flick
     line(d, (out_x, cy - 2), (out_x + s * 2, cy - 3), LASH, 1)
-    # Soft subtle double eyelid crease
     line(d, (cx - s * 2, cy - h // 2 - 3), (cx + s * 2, cy - h // 2 - 3), SKIN_SH, 1)
 
 
@@ -821,152 +846,140 @@ def build_face(emotion):
     img = new_char()
     d = ImageDraw.Draw(img)
 
-    # Cheek blush (clean warm pink)
+    # Cheek blush (clean soft warm pink tucked neatly inside slender cheeks!)
     if emotion in ("blush", "flustered"):
-        bl = (255, 114, 146, 210)
-        ell(d, -14, -156, 8, 4, bl)
-        ell(d, 6, -156, 8, 4, bl)
-        for bx in (-12, -10, -8, 8, 10, 12):
-            line(d, (bx, -155), (bx + 1, -153), (236, 84, 116, 215), 1)
+        bl = (255, 114, 146, 200)
+        ell(d, -12, -154, 6, 3, bl)
+        ell(d, 6, -154, 6, 3, bl)
+        for bx in (-11, -9, -7, 7, 9, 11):
+            line(d, (bx, -153), (bx + 1, -152), (236, 84, 116, 210), 1)
     elif emotion == "romantic":
-        bl = (255, 134, 162, 165)
-        ell(d, -13, -156, 7, 4, bl)
-        ell(d, 6, -156, 7, 4, bl)
-        line(d, (-11, -154), (-10, -153), (242, 106, 136, 175), 1)
-        line(d, (9, -154), (10, -153), (242, 106, 136, 175), 1)
+        bl = (255, 134, 162, 160)
+        ell(d, -11, -154, 6, 3, bl)
+        ell(d, 5, -154, 6, 3, bl)
+        line(d, (-10, -153), (-9, -152), (242, 106, 136, 170), 1)
+        line(d, (9, -153), (10, -152), (242, 106, 136, 170), 1)
     elif emotion == "pout":
-        bl = (252, 138, 160, 165)
-        ell(d, -14, -155, 7, 4, bl)
-        ell(d, 7, -155, 7, 4, bl)
+        bl = (252, 138, 160, 160)
+        ell(d, -12, -153, 6, 3, bl)
+        ell(d, 6, -153, 6, 3, bl)
     else:
-        blush_a = 170 if emotion in ("pet", "starry", "smug") else 128
+        blush_a = 165 if emotion in ("pet", "starry", "smug") else 120
         bl = (255, 146, 170, blush_a)
-        ell(d, -14, -155, 7, 4, bl)
-        ell(d, 7, -155, 7, 4, bl)
+        ell(d, -11, -153, 5, 3, bl)
+        ell(d, 6, -153, 5, 3, bl)
         if emotion in ("pet", "starry", "normal"):
-            line(d, (-11, -154), (-10, -153), (246, 118, 144, 150), 1)
-            line(d, (10, -154), (11, -153), (246, 118, 144, 150), 1)
+            line(d, (-10, -152), (-9, -151), (246, 118, 144, 145), 1)
+            line(d, (9, -152), (10, -151), (246, 118, 144, 145), 1)
 
-    # Eyebrows
+    # Eyebrows (lowered slightly to match cute mid-face eye line!)
     if emotion == "pout":
-        line(d, (-12, -169), (-4, -166), BROW, 1)
-        line(d, (4, -166), (12, -169), BROW, 1)
+        line(d, (-11, -167), (-4, -164), BROW, 1)
+        line(d, (4, -164), (11, -167), BROW, 1)
     elif emotion in ("blush", "flustered", "romantic"):
-        line(d, (-12, -167), (-4, -170), BROW, 1)
-        line(d, (4, -170), (12, -167), BROW, 1)
+        line(d, (-11, -165), (-4, -168), BROW, 1)
+        line(d, (4, -168), (11, -165), BROW, 1)
     elif emotion == "surprised":
-        line(d, (-12, -170), (-4, -171), BROW, 1)
-        line(d, (4, -171), (12, -170), BROW, 1)
+        line(d, (-11, -168), (-4, -169), BROW, 1)
+        line(d, (4, -169), (11, -168), BROW, 1)
     else:
-        line(d, (-12, -167), (-4, -168), BROW, 1)
-        line(d, (4, -168), (12, -167), BROW, 1)
+        line(d, (-11, -165), (-4, -166), BROW, 1)
+        line(d, (4, -166), (11, -165), BROW, 1)
 
-    # Eyes (y = -161)
+    # Eyes (lowered 2px to y = -159 for ideal cute slender anime face proportions!)
     if emotion in ("normal", "blush", "flustered", "pout"):
-        draw_almond_eye(d, -8, -161, -1, wide=False)
-        draw_almond_eye(d, 8, -161, 1, wide=False)
+        draw_almond_eye(d, -7, -159, -1, wide=False)
+        draw_almond_eye(d, 7, -159, 1, wide=False)
     elif emotion == "romantic":
-        # Soft, warm gently half-lidded gaze
-        draw_almond_eye(d, -8, -161, -1, wide=False)
-        draw_almond_eye(d, 8, -161, 1, wide=False)
-        rect(d, -13, -165, 10, 2, SKIN)
-        rect(d, 3, -165, 10, 2, SKIN)
-        line(d, (-13, -163), (-3, -163), LASH, 2)
-        line(d, (3, -163), (13, -163), LASH, 2)
+        draw_almond_eye(d, -7, -159, -1, wide=False)
+        draw_almond_eye(d, 7, -159, 1, wide=False)
+        rect(d, -12, -163, 9, 2, SKIN)
+        rect(d, 3, -163, 9, 2, SKIN)
+        line(d, (-12, -161), (-3, -161), LASH, 2)
+        line(d, (3, -161), (12, -161), LASH, 2)
     elif emotion == "surprised":
-        draw_almond_eye(d, -8, -161, -1, wide=True)
-        draw_almond_eye(d, 8, -161, 1, wide=True)
+        draw_almond_eye(d, -7, -159, -1, wide=True)
+        draw_almond_eye(d, 7, -159, 1, wide=True)
     elif emotion == "smug":
-        # Playful confident half-lidded gaze
-        draw_almond_eye(d, -8, -161, -1, wide=False)
-        draw_almond_eye(d, 8, -161, 1, wide=False)
-        rect(d, -13, -165, 10, 3, SKIN)
-        rect(d, 3, -165, 10, 3, SKIN)
-        line(d, (-13, -162), (-3, -162), LASH, 2)
-        line(d, (3, -162), (13, -162), LASH, 2)
+        draw_almond_eye(d, -7, -159, -1, wide=False)
+        draw_almond_eye(d, 7, -159, 1, wide=False)
+        rect(d, -12, -163, 9, 3, SKIN)
+        rect(d, 3, -163, 9, 3, SKIN)
+        line(d, (-12, -160), (-3, -160), LASH, 2)
+        line(d, (3, -160), (12, -160), LASH, 2)
     elif emotion == "starry":
-        # Bright excited eyes with golden pixel stars!
-        draw_almond_eye(d, -8, -161, -1, wide=True)
-        draw_almond_eye(d, 8, -161, 1, wide=True)
-        for cx in (-8, 8):
-            ell(d, cx - 3, -164, 6, 6, EYE_MID)
-            # Bright golden 4-point star inside each eye
-            rect(d, cx - 1, -163, 2, 4, (255, 240, 120, 255))
-            rect(d, cx - 2, -162, 4, 2, (255, 240, 120, 255))
-            rect(d, cx, -162, 1, 1, WHITE)
+        draw_almond_eye(d, -7, -159, -1, wide=True)
+        draw_almond_eye(d, 7, -159, 1, wide=True)
+        for cx in (-7, 7):
+            ell(d, cx - 3, -162, 6, 6, EYE_MID)
+            rect(d, cx - 1, -161, 2, 4, (255, 240, 120, 255))
+            rect(d, cx - 2, -160, 4, 2, (255, 240, 120, 255))
+            rect(d, cx, -160, 1, 1, WHITE)
     elif emotion == "sleepy":
-        # Droopy half-closed sleepy eyes
-        for cx in (-8, 8):
-            rect(d, cx - 4, -161, 8, 3, WHITE)
-            rect(d, cx - 2, -161, 4, 2, EYE_MID)
-            line(d, (cx - 5, -161), (cx + 5, -161), LASH, 2)
+        for cx in (-7, 7):
+            rect(d, cx - 4, -159, 8, 3, WHITE)
+            rect(d, cx - 2, -159, 4, 2, EYE_MID)
+            line(d, (cx - 4, -159), (cx + 4, -159), LASH, 2)
     elif emotion == "pet":
-        # Happy squeezed ^ ^ eyes
-        for cx in (-8, 8):
-            pts = bezier((cx - 5, -160), (cx, -165), (cx + 5, -160), 10)
+        for cx in (-7, 7):
+            pts = bezier((cx - 4, -158), (cx, -163), (cx + 4, -158), 10)
             for i in range(len(pts) - 1):
                 line(d, pts[i], pts[i + 1], LASH, 2)
     elif emotion == "blink":
-        for cx in (-8, 8):
-            pts = bezier((cx - 5, -161), (cx, -159), (cx + 5, -161), 10)
+        for cx in (-7, 7):
+            pts = bezier((cx - 4, -159), (cx, -157), (cx + 4, -159), 10)
             for i in range(len(pts) - 1):
                 line(d, pts[i], pts[i + 1], LASH, 2)
 
     # Delicate nose dot
-    rect(d, 0, -155, 1, 1, SKIN_D)
+    rect(d, 0, -153, 1, 1, SKIN_D)
 
-    # Mouth (softer, sweeter anime smiles!)
+    # Mouth (softer, sweeter anime smiles neatly proportioned above slender V-chin!)
     if emotion == "normal":
-        line(d, (-3, -150), (-1, -148), MOUTH_C, 1)
-        line(d, (-1, -148), (1, -148), MOUTH_C, 1)
-        line(d, (1, -148), (3, -150), MOUTH_C, 1)
+        line(d, (-3, -148), (-1, -147), MOUTH_C, 1)
+        line(d, (-1, -147), (1, -147), MOUTH_C, 1)
+        line(d, (1, -147), (3, -148), MOUTH_C, 1)
     elif emotion == "pet":
-        pts = bezier((-4, -150), (0, -146), (4, -150), 8)
+        pts = bezier((-3, -149), (0, -146), (3, -149), 8)
         for i in range(len(pts) - 1):
             line(d, pts[i], pts[i + 1], MOUTH_C, 1)
     elif emotion == "blush":
-        for x, y in ((-3, -149), (-2, -150), (-1, -149), (0, -148), (1, -149), (2, -150), (3, -149)):
+        for x, y in ((-3, -148), (-2, -149), (-1, -148), (0, -147), (1, -148), (2, -149), (3, -148)):
             rect(d, x, y, 1, 1, MOUTH_C)
     elif emotion == "romantic":
-        # Gentle warm soft smile
-        line(d, (-3, -149), (-1, -148), MOUTH_C, 1)
-        line(d, (-1, -148), (2, -148), MOUTH_C, 1)
-        line(d, (2, -148), (4, -150), MOUTH_C, 1)
+        line(d, (-3, -148), (-1, -147), MOUTH_C, 1)
+        line(d, (-1, -147), (1, -147), MOUTH_C, 1)
+        line(d, (1, -147), (3, -149), MOUTH_C, 1)
     elif emotion == "flustered":
-        # Wavy shy mouth + tiny cute heart/sweatdrop accent beside face!
-        for x, y in ((-3, -149), (-2, -150), (-1, -149), (0, -148), (1, -149), (2, -150), (3, -149)):
+        for x, y in ((-3, -148), (-2, -149), (-1, -148), (0, -147), (1, -148), (2, -149), (3, -148)):
             rect(d, x, y, 1, 1, MOUTH_C)
-        # Cute little pixel heart beside right temple
-        rect(d, 15, -170, 2, 2, PINK)
-        rect(d, 18, -170, 2, 2, PINK)
-        rect(d, 15, -168, 5, 2, PINK)
-        rect(d, 16, -166, 3, 1, PINK)
-        rect(d, 17, -165, 1, 1, PINK)
+        rect(d, 13, -168, 2, 2, PINK)
+        rect(d, 16, -168, 2, 2, PINK)
+        rect(d, 13, -166, 5, 2, PINK)
+        rect(d, 14, -164, 3, 1, PINK)
+        rect(d, 15, -163, 1, 1, PINK)
     elif emotion == "smug":
-        # Confident playful cat-like grin
-        line(d, (-4, -150), (-1, -148), MOUTH_C, 1)
-        line(d, (-1, -148), (2, -148), MOUTH_C, 1)
-        line(d, (2, -148), (5, -151), MOUTH_C, 1)
+        line(d, (-3, -149), (-1, -147), MOUTH_C, 1)
+        line(d, (-1, -147), (2, -147), MOUTH_C, 1)
+        line(d, (2, -147), (4, -149), MOUTH_C, 1)
     elif emotion == "surprised":
-        ell(d, -2, -151, 4, 4, MOUTH_IN)
-        d.ellipse([OX - 2, OY - 151, OX + 2, OY - 147], outline=MOUTH_C)
+        ell(d, -2, -150, 4, 4, MOUTH_IN)
+        d.ellipse([OX - 2, OY - 150, OX + 2, OY - 146], outline=MOUTH_C)
     elif emotion == "sleepy":
-        # Cute soft yawning oval
-        ell(d, -2, -152, 5, 5, MOUTH_IN)
-        d.ellipse([OX - 2, OY - 152, OX + 2, OY - 147], outline=MOUTH_C)
+        ell(d, -2, -150, 4, 4, MOUTH_IN)
+        d.ellipse([OX - 2, OY - 150, OX + 2, OY - 146], outline=MOUTH_C)
     elif emotion == "pout":
-        # Tiny pouty frown + puffed cheek lines
-        line(d, (-2, -149), (0, -150), MOUTH_C, 1)
-        line(d, (0, -150), (2, -149), MOUTH_C, 1)
-        line(d, (-11, -151), (-11, -148), SKIN_D, 1)
-        line(d, (11, -151), (11, -148), SKIN_D, 1)
+        line(d, (-2, -148), (0, -149), MOUTH_C, 1)
+        line(d, (0, -149), (2, -148), MOUTH_C, 1)
+        line(d, (-10, -150), (-10, -148), SKIN_D, 1)
+        line(d, (10, -150), (10, -148), SKIN_D, 1)
     elif emotion == "starry":
-        poly(d, [(-4, -151), (4, -151), (3, -146), (-3, -146)], MOUTH_IN)
-        line(d, (-4, -151), (4, -151), MOUTH_C, 1)
-        line(d, (-3, -146), (3, -146), MOUTH_C, 1)
+        poly(d, [(-3, -150), (3, -150), (2, -146), (-2, -146)], MOUTH_IN)
+        line(d, (-3, -150), (3, -150), MOUTH_C, 1)
+        line(d, (-2, -146), (2, -146), MOUTH_C, 1)
     elif emotion == "blink":
-        line(d, (-3, -149), (2, -149), MOUTH_C, 1)
-        rect(d, 3, -150, 1, 1, MOUTH_C)
+        line(d, (-3, -148), (2, -148), MOUTH_C, 1)
+        rect(d, 3, -149, 1, 1, MOUTH_C)
 
     return img
 
@@ -1387,21 +1400,20 @@ def build_drawer_open():
 
 
 def build_acc_glasses():
-    """Wearable stylish red-framed cosplay glasses on head canvas (CW, CH)."""
+    """Wearable stylish red-framed cosplay glasses aligned to Marin's lowered cute eyes (y=-159)."""
     img = new_char()
     d = ImageDraw.Draw(img)
     frame = (212, 56, 78, 255)
     frame_hi = (255, 136, 152, 255)
     lens = (204, 238, 255, 115)
-    for cx in (-8, 8):
-        rect(d, cx - 5, -165, 10, 8, lens)
-        d.rectangle([OX + cx - 6, OY - 166, OX + cx + 5, OY - 157], outline=frame, width=2)
-        line(d, (cx - 4, -164), (cx - 2, -164), WHITE, 1)
-        line(d, (cx - 4, -166), (cx + 3, -166), frame_hi, 1)
-    # Bridge & temples
-    line(d, (-2, -162), (2, -162), frame, 2)
-    line(d, (-15, -163), (-14, -163), frame, 2)
-    line(d, (14, -163), (15, -163), frame, 2)
+    for cx in (-7, 7):
+        rect(d, cx - 5, -163, 10, 8, lens)
+        d.rectangle([OX + cx - 5, OY - 164, OX + cx + 4, OY - 155], outline=frame, width=2)
+        line(d, (cx - 3, -162), (cx - 1, -162), WHITE, 1)
+        line(d, (cx - 3, -164), (cx + 2, -164), frame_hi, 1)
+    line(d, (-2, -160), (2, -160), frame, 2)
+    line(d, (-13, -161), (-12, -161), frame, 2)
+    line(d, (12, -161), (13, -161), frame, 2)
     return img
 
 
@@ -1698,6 +1710,7 @@ def generate_all():
         build_arm(outfit, 1, "stretch").save(os.path.join(ASSETS, f"arm_r_{outfit}_stretch.png"))
         build_arm(outfit, -1, "manga").save(os.path.join(ASSETS, f"arm_l_{outfit}_manga.png"))
         build_arm(outfit, 1, "manga").save(os.path.join(ASSETS, f"arm_r_{outfit}_manga.png"))
+        build_arm(outfit, 1, "manga_turn").save(os.path.join(ASSETS, f"arm_r_{outfit}_manga_turn.png"))
         build_arm(outfit, 1, "phone").save(os.path.join(ASSETS, f"arm_r_{outfit}_phone.png"))
 
     # Relaxed undone-top-buttons variants for School (0), Home Shirt (1) & Canon Relaxed Shirt (4)

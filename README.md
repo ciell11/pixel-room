@@ -1,4 +1,4 @@
-# Pixel Room — Marin Kitagawa (`v0.5-beta` — Alive, Cute & Chat Update)
+# Pixel Room — Marin Kitagawa (`v0.5.1-beta` — Alive, Cute & Chat Update)
 
 A cozy 16-bit interactive pixel-art desktop room & companion featuring **Marin Kitagawa** from *My Dress-Up Darling* (*Sono Bisque Doll wa Koi wo Suru*), built with Python + Pygame-CE (native `640×360` with pixel-perfect DPI-aware Nearest-Neighbor `1x`/`2x`/`3x` scaling, *sel-out* colored outlines, Bayer-dithered lighting, offline Russian/English Chat, Cozy Rain weather, and clamped multi-layer spring-damper physics).
 

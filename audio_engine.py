@@ -132,37 +132,46 @@ def build_lofi_loop():
 
 
 def build_rain_loop():
-    """Generate a seamless, click-free warm muffled cozy rain ambiance loop (~3.2s) that mixes cleanly with Lo-Fi."""
-    dur = 3.2
+    """Generate a very quiet, warm, heavily muffled rain-behind-window loop (~4.0s) with true overlap-add seamless loop."""
+    dur = 4.0
     n = int(SR * dur)
-    buf = [0.0] * n
+    seam = 2000
+    total = n + seam
+    buf = [0.0] * total
     rnd = random.Random(2026)
-    lp1 = lp2 = 0.0
-    for i in range(n):
+    lp1 = lp2 = lp3 = 0.0
+    # Warm-up filter so sample 0 starts smoothly at steady-state
+    for _ in range(512):
         w = rnd.uniform(-1.0, 1.0)
-        # Two-stage gentle low-pass gives warm soft rainfall hush (no harsh hiss!)
-        lp1 += (w - lp1) * 0.14
-        lp2 += (lp1 - lp2) * 0.09
-        buf[i] = lp2 * 0.65
+        lp1 += (w - lp1) * 0.055
+        lp2 += (lp1 - lp2) * 0.038
+        lp3 += (lp2 - lp3) * 0.028
 
-    # Subtle gentle raindrop window plinks
-    for _ in range(18):
-        s0 = rnd.randint(0, n - 1)
-        dlen = int(SR * 0.032)
-        f0 = rnd.uniform(620.0, 1180.0)
+    for i in range(total):
+        w = rnd.uniform(-1.0, 1.0)
+        # 3-stage deep low-pass strips harsh high hissing -> cozy muffled rain outside a closed glass window!
+        lp1 += (w - lp1) * 0.055
+        lp2 += (lp1 - lp2) * 0.038
+        lp3 += (lp2 - lp3) * 0.028
+        swell = 0.90 + 0.10 * math.sin(6.2831853 * ((i % n) / float(n)))
+        buf[i] = lp3 * 0.55 * swell
+
+    # Rare, very quiet, delicate soft glass raindrop taps (strictly inside middle of loop)
+    for _ in range(8):
+        s0 = rnd.randint(seam + 400, n - seam - 400)
+        dlen = int(SR * 0.026)
+        f0 = rnd.uniform(420.0, 680.0)
         for j in range(dlen):
-            idx = (s0 + j) % n
             p = j / dlen
-            env = min(1.0, p * 12.0) * ((1.0 - p) ** 2.2)
-            buf[idx] += math.sin(6.2831853 * f0 * (1.0 - 0.18 * p) * (j / SR)) * env * 0.075
+            env = min(1.0, p * 10.0) * ((1.0 - p) ** 2.6)
+            buf[s0 + j] += math.sin(6.2831853 * f0 * (1.0 - 0.15 * p) * (j / SR)) * env * 0.022
 
-    # Crossfade seam for 100% seamless click-free loop
-    seam = 600
+    # True tail-to-head Hann crossfade: sample[0] continues directly from sample[n-1] -> ZERO loop click!
     for i in range(seam):
-        w = i / float(seam)
-        buf[i] = buf[i] * w + buf[n - seam + i] * (1.0 - w)
+        w = 0.5 - 0.5 * math.cos(math.pi * i / float(seam))
+        buf[i] = buf[i] * w + buf[n + i] * (1.0 - w)
 
-    out = array.array("h", [int(clamp(math.tanh(x * 1.15), -0.9, 0.9) * 30000) for x in buf])
+    out = array.array("h", [int(clamp(math.tanh(x * 0.9), -0.85, 0.85) * 30000) for x in buf[:n]])
     return pygame.mixer.Sound(buffer=out.tobytes())
 
 
@@ -290,7 +299,7 @@ class AudioEngine:
         if self.lofi:
             self.lofi.set_volume(vol * 0.50)
         if self.rain:
-            self.rain.set_volume(vol * 0.42)
+            self.rain.set_volume(vol * 0.11)
 
     def set_music(self, enabled):
         if not self.ok:
@@ -311,7 +320,7 @@ class AudioEngine:
         if enabled:
             if self.rain is None:
                 self.rain = build_rain_loop()
-            self.rain.set_volume(self.vol * 0.42)
+            self.rain.set_volume(self.vol * 0.11)
             if self.rain_ch is None or not self.rain_ch.get_busy():
                 self.rain_ch = self.rain.play(loops=-1)
         elif self.rain_ch:

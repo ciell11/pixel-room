@@ -592,7 +592,8 @@ class CharacterPhysics:
             elif self.ai_state == "bed_phone":
                 self.sp["head"].y += (2.0 - self.sp["head"].y) * min(1.0, dt * 3.5)
             elif self.ai_state == "read_manga":
-                self.sp["head"].y += (3.2 - self.sp["head"].y) * min(1.0, dt * 4.5)
+                # Gently tilt head downward looking at the open manga pages!
+                self.sp["head"].y += (4.4 - self.sp["head"].y) * min(1.0, dt * 4.5)
 
             dx_c = mx - self.rx
             dy_c = my - (self.ry - 154 + self.floor_sit_y)
@@ -629,7 +630,7 @@ class CharacterPhysics:
         if self.ai_state == "bed_phone" and not interacting and math.hypot(mx - self.rx, my - (self.ry - 150)) > 75:
             tx, ty = 0.7, 1.15
         elif self.ai_state == "read_manga" and not interacting and math.hypot(mx - self.rx, my - (self.ry - 110)) > 70:
-            tx, ty = 0.0, 1.35
+            tx, ty = 0.0, 1.65
         elif self.ai_state == "watch_window" and not interacting and math.hypot(mx - self.rx, my - (self.ry - 150)) > 85:
             tx, ty = 0.0, -0.9
         elif self.idle_look_t > 0 and not interacting:
@@ -693,8 +694,8 @@ class CharacterPhysics:
         h_ang = hd.angle()
         hx, hy = hd.x * 0.5, hd.y * 0.5 + by
 
-        # Layer 5a: Back hair
-        draw_spring(assets["hair_back"], "hairB", extra_x=hx * 0.6, extra_y=hy * 0.65, angle_add=h_ang * 0.45)
+        # Layer 5a: Back hair (tracks head tilt cleanly even when looking down reading manga!)
+        draw_spring(assets["hair_back"], "hairB", extra_x=hx * 0.6, extra_y=hy * 0.95, angle_add=h_ang * 0.45)
 
         # Layer 0: Legs (air / bed-sit / floor-sit / walk / stand)
         if self.air or dragging:
@@ -741,9 +742,8 @@ class CharacterPhysics:
             blit_pivoted(comp, assets[f"arm_l_{outfit}_stretch"], PIVOTS["armL"], dp("armL", 0, by), angle=-sw)
             blit_pivoted(comp, assets[f"arm_r_{outfit}_stretch"], PIVOTS["armR"], dp("armR", 0, by), angle=sw)
         elif holding_manga:
-            blit_pivoted(comp, assets[f"arm_l_{outfit}_manga"], PIVOTS["armL"], dp("armL", 0, by), angle=0.0)
-            r_ang = -16.0 * math.sin(clamp(self.manga_turn_t / 0.45, 0.0, 1.0) * math.pi) if self.manga_turn_t > 0 else 0.0
-            blit_pivoted(comp, assets[f"arm_r_{outfit}_manga"], PIVOTS["armR"], dp("armR", 0, by), angle=r_ang)
+            # Reading arms + open manga are drawn cleanly in foreground AFTER hair so hands visibly grip the book!
+            pass
         else:
             draw_spring(assets[f"arm_l_{outfit}"], "armL", extra_y=by)
             if self.wave_t > 0 and grab_part != "armR":
@@ -772,8 +772,8 @@ class CharacterPhysics:
                 py = int(round(self.pup[1]))
                 if emotion in ("blush", "flustered"):
                     px = -1 if self.pup[0] >= 0 else 1
-                hc.blit(iris, (OX - 8 - iw + px, OY - 161 - ih + py))
-                hc.blit(iris, (OX + 8 - iw + px, OY - 161 - ih + py))
+                hc.blit(iris, (OX - 7 - iw + px, OY - 159 - ih + py))
+                hc.blit(iris, (OX + 7 - iw + px, OY - 159 - ih + py))
 
         if accessory == 1:
             hc.blit(assets["acc_glasses"], (0, 0))
@@ -789,10 +789,13 @@ class CharacterPhysics:
         if accessory == 2:
             blit_pivoted(comp, assets["acc_ears"], PIVOTS["head"], dp("head", hx, hy), angle=h_ang, sx=hsx, sy=hsy)
 
-        # Draw open pixel manga book cleanly IN FRONT of lap & hair tips so pages pop clearly!
+        # Draw open pixel manga book AND bent reading arms gripping its sides cleanly in front!
         if holding_manga:
-            m_img = assets["manga_open_flip" if self.manga_turn_t > 0.12 else "manga_open"]
-            comp.blit(m_img, (int(COX - 16 + wx), int(COY - 94 + by)))
+            m_img = assets["manga_open_flip" if self.manga_turn_t > 0.10 else "manga_open"]
+            comp.blit(m_img, (int(COX - 16 + wx), int(COY - 109 + by)))
+            blit_pivoted(comp, assets[f"arm_l_{outfit}_manga"], PIVOTS["armL"], dp("armL", 0, by), angle=0.0)
+            r_key = f"arm_r_{outfit}_manga_turn" if self.manga_turn_t > 0.10 else f"arm_r_{outfit}_manga"
+            blit_pivoted(comp, assets[r_key], PIVOTS["armR"], dp("armR", 0, by), angle=0.0)
 
         self.mask = pygame.mask.from_surface(comp)
         return comp
