@@ -131,6 +131,41 @@ def build_lofi_loop():
     return pygame.mixer.Sound(buffer=out.tobytes())
 
 
+def build_rain_loop():
+    """Generate a seamless, click-free warm muffled cozy rain ambiance loop (~3.2s) that mixes cleanly with Lo-Fi."""
+    dur = 3.2
+    n = int(SR * dur)
+    buf = [0.0] * n
+    rnd = random.Random(2026)
+    lp1 = lp2 = 0.0
+    for i in range(n):
+        w = rnd.uniform(-1.0, 1.0)
+        # Two-stage gentle low-pass gives warm soft rainfall hush (no harsh hiss!)
+        lp1 += (w - lp1) * 0.14
+        lp2 += (lp1 - lp2) * 0.09
+        buf[i] = lp2 * 0.65
+
+    # Subtle gentle raindrop window plinks
+    for _ in range(18):
+        s0 = rnd.randint(0, n - 1)
+        dlen = int(SR * 0.032)
+        f0 = rnd.uniform(620.0, 1180.0)
+        for j in range(dlen):
+            idx = (s0 + j) % n
+            p = j / dlen
+            env = min(1.0, p * 12.0) * ((1.0 - p) ** 2.2)
+            buf[idx] += math.sin(6.2831853 * f0 * (1.0 - 0.18 * p) * (j / SR)) * env * 0.075
+
+    # Crossfade seam for 100% seamless click-free loop
+    seam = 600
+    for i in range(seam):
+        w = i / float(seam)
+        buf[i] = buf[i] * w + buf[n - seam + i] * (1.0 - w)
+
+    out = array.array("h", [int(clamp(math.tanh(x * 1.15), -0.9, 0.9) * 30000) for x in buf])
+    return pygame.mixer.Sound(buffer=out.tobytes())
+
+
 class AudioEngine:
     def __init__(self, initial_volume=0.6):
         self.ok = pygame.mixer.get_init() is not None
@@ -138,6 +173,8 @@ class AudioEngine:
         self.blips = []
         self.lofi = None
         self.lofi_ch = None
+        self.rain = None
+        self.rain_ch = None
         self.vol = initial_volume
         if not self.ok:
             return
@@ -175,6 +212,10 @@ class AudioEngine:
             synth_tone(0, 0, 0.11, "noise", 0.18, attack=0.015, lp_alpha=0.15),
         ))
         self.sounds["page"] = mk(synth_tone(0, 0, 0.11, "noise", 0.24, attack=0.012, lp_alpha=0.28))
+        self.sounds["cloth"] = mk(mix_pcm(
+            synth_tone(0, 0, 0.15, "noise", 0.20, attack=0.025, lp_alpha=0.16),
+            synth_tone(480, 620, 0.06, "sine", 0.12, attack=0.01, lp_alpha=0.4),
+        ))
 
         # Bubble tea pleasant sip + pop
         self.sounds["sip"] = mk(concat_pcm(
@@ -248,6 +289,8 @@ class AudioEngine:
             snd.set_volume(vol)
         if self.lofi:
             self.lofi.set_volume(vol * 0.50)
+        if self.rain:
+            self.rain.set_volume(vol * 0.42)
 
     def set_music(self, enabled):
         if not self.ok:
@@ -261,6 +304,19 @@ class AudioEngine:
         elif self.lofi_ch:
             self.lofi_ch.stop()
             self.lofi_ch = None
+
+    def set_rain(self, enabled):
+        if not self.ok:
+            return
+        if enabled:
+            if self.rain is None:
+                self.rain = build_rain_loop()
+            self.rain.set_volume(self.vol * 0.42)
+            if self.rain_ch is None or not self.rain_ch.get_busy():
+                self.rain_ch = self.rain.play(loops=-1)
+        elif self.rain_ch:
+            self.rain_ch.stop()
+            self.rain_ch = None
 
     def play(self, name):
         if self.ok and name in self.sounds:

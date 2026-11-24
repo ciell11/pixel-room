@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
-"""Pixel Room — Marin Kitagawa (v0.4-beta: Living Room & Dynamic Affinity Update)."""
+"""Pixel Room — Marin Kitagawa (v0.5-beta: Alive, Cute & Chat Update)."""
 import os
 import sys
 import math
 import random
+import datetime
 
 # Set Windows DPI awareness BEFORE pygame.init() for crisp 1:1 Nearest-Neighbor scaling & zero black strips!
 if sys.platform == "win32":
@@ -27,6 +28,7 @@ from particles import ParticleSystem
 from physics import CharacterPhysics, blit_pivoted, MAX_BODY_VEL
 from room_objects import RoomObjects, MAX_PILLOW_VEL
 from ui_manager import UIManager, pattern_surface, HEART_P
+from chat_engine import ChatEngine
 
 
 class Game:
@@ -52,6 +54,7 @@ class Game:
         self.apply_window()
         try:
             pygame.mouse.set_visible(False)
+            pygame.key.stop_text_input()
         except Exception:
             pass
 
@@ -67,21 +70,30 @@ class Game:
         self.particles = ParticleSystem(self.ui.icons)
         self.phys = CharacterPhysics()
         self.room = RoomObjects(cfg)
+        self.chat = ChatEngine()
+        self.audio.set_rain(self.room.weather_rain)
 
-        # Persistent character state
+        # Persistent character state & stats
         self.outfit = cfg["outfit"]
         self.accessory = cfg["accessory"]
         self.mood = cfg["mood"]
         self.affinity_xp = cfg["affinity_xp"]
         self.rps_wins = cfg["rps_wins"]
         self.collar_relaxed = bool(cfg.get("collar_relaxed", False))
+        self.player_name = cfg.get("player_name", "")
+        self.stat_pets = cfg.get("stat_pets", 0)
+        self.stat_selfies = cfg.get("stat_selfies", 0)
+        self.stat_chats = cfg.get("stat_chats", 0)
+
+        if cfg.get("real_time_sync", False):
+            self.sync_real_time_light(silent=True)
 
         self.emotion, self.emo_t = self.base_emotion(), 0.0
         self.speech, self.speech_t, self.speech_shown = "", 0.0, 0.0
 
         # Input & dynamic interaction state
-        self.mode = None          # LMB: press|drag|spring_grab|arm_grab|pillow|boba|glasses_item|gift_item|camera_item
-        self.rmb_petting = False  # RMB: headpat
+        self.mode = None
+        self.rmb_petting = False
         self.press = (0.0, 0.0)
         self.press_zone = None
         self.grab = (0.0, 0.0)
@@ -99,12 +111,15 @@ class Game:
         self.near_cd = 0.0
         self.tease_score = 0.0
         self.collar_check_cd = 5.0
+        self.rt_sync_cd = 30.0
         self.hint_t = 10.0
         self.emo_idx = 0
         self.mouse = (320.0, 180.0)
         self.mouse_in_window = True
         self.hover_obj = None
         self.cursor_state = "arrow"
+        self._skip_next_textinput = False
+        self._snap_polaroid_next = False
 
     @staticmethod
     def _build_phone_halo():
@@ -145,13 +160,15 @@ class Game:
         return affinity_level(self.affinity_xp)
 
     def add_affinity(self, pts):
+        if pts <= 0:
+            return
         old_lvl = self.aff_lvl
         self.affinity_xp += int(pts)
         new_lvl = self.aff_lvl
         if new_lvl > old_lvl:
             self.audio.play("level_up")
-            self.particles.spawn("heart", self.phys.rx, self.phys.ry - 188, 6)
-            self.particles.spawn("star", self.phys.rx, self.phys.ry - 170, 8)
+            self.particles.spawn("heart", self.phys.rx, self.phys.ry - 188 + self.phys.floor_sit_y, 6)
+            self.particles.spawn("star", self.phys.rx, self.phys.ry - 170 + self.phys.floor_sit_y, 8)
             self.emote("romantic", 3.4)
             msg = random.choice(LINES["level_up"]).format(lvl=new_lvl)
             self.say(msg, raw=True)
@@ -174,6 +191,21 @@ class Game:
         except Exception:
             pass
 
+    def sync_real_time_light(self, silent=False):
+        """Map system clock hour cleanly to Day / Sunset / Evening Lamp / Night."""
+        hour = datetime.datetime.now().hour
+        if 6 <= hour < 17:
+            self.room.light, self.room.lamp_on = 0, False
+        elif 17 <= hour < 20:
+            self.room.light, self.room.lamp_on = 1, False
+        elif 20 <= hour < 23:
+            self.room.light, self.room.lamp_on = 2, True
+        else:
+            self.room.light, self.room.lamp_on = 2, False
+            self.room.fairy_on = True
+        if not silent:
+            self.audio.play("lamp")
+
     def persist(self):
         d = self.saves.data
         d["outfit"] = self.outfit
@@ -185,9 +217,14 @@ class Game:
         d["fairy_on"] = self.room.fairy_on
         d["curtains_closed"] = self.room.curtains_closed
         d["poster_idx"] = self.room.poster_idx
+        d["weather_rain"] = self.room.weather_rain
         d["rps_wins"] = self.rps_wins
         d["music_on"] = self.music_on
         d["collar_relaxed"] = self.collar_relaxed
+        d["player_name"] = self.player_name
+        d["stat_pets"] = self.stat_pets
+        d["stat_selfies"] = self.stat_selfies
+        d["stat_chats"] = self.stat_chats
         self.saves.save()
 
     def reset_pose(self):
@@ -212,25 +249,31 @@ class Game:
         self.rps_wins = d["rps_wins"]
         self.music_on = d["music_on"]
         self.collar_relaxed = d["collar_relaxed"]
+        self.player_name = d["player_name"]
+        self.stat_pets = d["stat_pets"]
+        self.stat_selfies = d["stat_selfies"]
+        self.stat_chats = d["stat_chats"]
         self.tease_score = 0.0
         self.audio.set_music(self.music_on)
         self.room.sync_from_save(d)
+        self.audio.set_rain(self.room.weather_rain)
         self.room.reset_props()
         self.phys.reset()
         self.particles.clear()
         self.audio.set_volume(d["volume"])
         self.apply_topmost()
         self.ui.close_rps()
+        self.ui.close_chat()
         self.ui.settings = False
         self.ui.confirm_reset = False
         self.emote("normal", 0.0)
         self.say("reset_all")
         self.audio.play("sparkle")
 
-    # ------------------------------------------------ reactions & lighting
+    # ------------------------------------------------ reactions, chat & weather
     def say(self, key_or_text, raw=False):
         self.speech = key_or_text if raw else random.choice(LINES[key_or_text])
-        self.speech_t = 2.4 + len(self.speech) * 0.042
+        self.speech_t = 2.8 + len(self.speech) * 0.044
         self.speech_shown = 0.0
         self.idle_t = 0.0
 
@@ -242,8 +285,127 @@ class Game:
             return "sleepy"
         return "normal"
 
+    def toggle_rain(self, force_state=None, silent=False):
+        new_state = (not self.room.weather_rain) if force_state is None else bool(force_state)
+        self.room.weather_rain = new_state
+        self.saves.data["weather_rain"] = new_state
+        self.audio.set_rain(new_state)
+        if not silent:
+            self.audio.play("fairy" if new_state else "click")
+            self.say("rain_on" if new_state else "rain_off")
+            self.emote("romantic" if new_state else "pet", 2.4)
+        self.persist()
+
+    def submit_chat(self, text):
+        msg = text.strip()
+        if not msg:
+            return
+        ctx = {
+            "aff_lvl": self.aff_lvl,
+            "mood": self.mood,
+            "outfit": self.outfit,
+            "collar_relaxed": self.collar_relaxed,
+            "music_on": self.music_on,
+            "rain_on": self.room.weather_rain,
+            "light": self.room.light,
+            "player_name": self.player_name,
+        }
+        res = self.chat.respond(msg, ctx)
+        if not res:
+            return
+
+        self.stat_chats += 1
+        self.idle_t = 0.0
+        if res["set_name"]:
+            self.player_name = res["set_name"]
+        self.mood = clamp(self.mood + res["mood_delta"], 0.0, 100.0)
+        self.tease_score = max(0.0, self.tease_score + res["tease_delta"])
+        if res["aff_delta"]:
+            self.add_affinity(res["aff_delta"])
+
+        self.emote(res["emote"], 3.0)
+        self.say(res["reply"], raw=True)
+
+        pt = res["particle"]
+        py_top = self.phys.ry - 186 + self.phys.floor_sit_y
+        if pt == "kiss_heart":
+            self.phys.wave_t = 1.25
+            self.particles.spawn("kiss_heart", self.phys.rx + 12, self.phys.ry - 154 + self.phys.floor_sit_y, 1)
+            self.particles.spawn("heart", self.phys.rx, py_top, 3)
+            self.audio.play("headpat")
+        elif pt == "heart":
+            self.particles.spawn("heart", self.phys.rx, py_top, 3)
+            self.audio.play("headpat")
+        elif pt == "star":
+            self.particles.spawn("star", self.phys.rx, py_top + 12, 5)
+            self.audio.play("sparkle")
+        elif pt == "excl":
+            self.particles.spawn("excl", self.phys.rx + 22, py_top, 1)
+            self.audio.play("pop")
+
+        # Execute live room / character action if requested via chat!
+        act = res["action"]
+        if act == "music_on":
+            self.music_on = True
+            self.audio.set_music(True)
+        elif act == "music_off":
+            self.music_on = False
+            self.audio.set_music(False)
+        elif act == "rain_on":
+            self.toggle_rain(True, silent=True)
+        elif act == "rain_off":
+            self.toggle_rain(False, silent=True)
+        elif act == "light_off":
+            self.room.light, self.room.lamp_on = 2, False
+            self.audio.play("lamp")
+        elif act == "light_on":
+            self.room.light, self.room.lamp_on = 0, False
+            self.room.curtains_closed = False
+            self.audio.play("lamp")
+        elif act == "romantic":
+            self.room.light = 3
+            self.room.fairy_on = True
+            self.audio.play("fairy")
+        elif act == "wardrobe":
+            self.start_wardrobe()
+        elif act == "accessory":
+            self.accessory = (self.accessory + 1) % ACC_COUNT
+            self.audio.play("sparkle")
+            self.particles.spawn("star", self.phys.rx, py_top + 12, 6)
+        elif act == "sit_bed":
+            self.phys.go_to_activity("bed_phone")
+        elif act == "read_manga":
+            self.phys.go_to_activity("read_manga")
+        elif act == "start_rps":
+            self.ui.start_rps()
+        elif act == "dance":
+            if not self.music_on:
+                self.music_on = True
+                self.audio.set_music(True)
+            self.phys.go_to_activity("lofi_dance")
+        elif act == "stretch":
+            self.phys.go_to_activity("stretch")
+        elif act == "wave":
+            self.phys.wave_t = 1.9
+        elif act == "collar_relax" and self.outfit in (0, 1, 4):
+            self.phys.start_collar_anim(True)
+        elif act == "collar_button" and self.outfit in (0, 1, 4):
+            self.phys.start_collar_anim(False)
+        elif act == "throw_pillow":
+            pl = self.room.pillow
+            pl["on_bed"] = False
+            pl["x"], pl["y"] = self.phys.rx, self.phys.ry - 125
+            tx, ty = self.mouse[0] - pl["x"], self.mouse[1] - pl["y"]
+            dist = max(20.0, math.hypot(tx, ty))
+            pl["vx"] = clamp((tx / dist) * 480.0, -MAX_PILLOW_VEL, MAX_PILLOW_VEL)
+            pl["vy"] = clamp((ty / dist) * 320.0 - 200.0, -MAX_PILLOW_VEL, MAX_PILLOW_VEL)
+            pl["vang"] = 360.0 if pl["vx"] >= 0 else -360.0
+            self.phys.wave_t = 0.8
+            self.audio.play("boing")
+
+        self.persist()
+
     def _check_reading_light_reaction(self, was_dim):
-        """Tease vs Care: turning light off vs on while Marin is reading manga!"""
         if self.phys.ai_state != "read_manga":
             return False
         is_dim = self.room.is_dim_or_dark() and not self.room.lamp_on
@@ -251,7 +413,7 @@ class Game:
             self.tease_score += 1.8
             self.emote("pout", 2.8)
             self.say("tease_dark_read")
-            self.particles.spawn("excl", self.phys.rx + 20, self.phys.ry - 186, 1)
+            self.particles.spawn("excl", self.phys.rx + 20, self.phys.ry - 186 + self.phys.floor_sit_y, 1)
             return True
         if was_dim and not is_dim:
             self.tease_score = max(0.0, self.tease_score - 2.0)
@@ -259,7 +421,7 @@ class Game:
             self.add_affinity(10)
             self.emote("romantic", 2.6)
             self.say("care_light_read")
-            self.particles.spawn("heart", self.phys.rx, self.phys.ry - 184, 3)
+            self.particles.spawn("heart", self.phys.rx, self.phys.ry - 184 + self.phys.floor_sit_y, 3)
             return True
         return False
 
@@ -334,7 +496,7 @@ class Game:
         self.say("music_on" if self.music_on else "music_off")
         if self.music_on:
             self.emote("pet", 1.8)
-            self.particles.spawn("star", self.phys.rx, self.phys.ry - 182, 3)
+            self.particles.spawn("note", self.phys.rx, self.phys.ry - 184 + self.phys.floor_sit_y, 2)
         self.persist()
 
     def toggle_curtains(self):
@@ -354,7 +516,7 @@ class Game:
     def cycle_accessory(self):
         self.accessory = (self.accessory + 1) % ACC_COUNT
         self.audio.play("sparkle")
-        self.particles.spawn("star", self.phys.rx, self.phys.ry - 172, 6)
+        self.particles.spawn("star", self.phys.rx, self.phys.ry - 172 + self.phys.floor_sit_y, 6)
         self.phys.sp["head"].kick(random.choice((-65, 65)), -25, self.saves.data["physics"])
         self.emote("smug" if self.accessory == 1 else ("starry" if self.accessory == 2 else "normal"), 2.2)
         self.say(f"acc_{self.accessory}")
@@ -379,7 +541,8 @@ class Game:
     def on_rmb_up(self):
         if self.rmb_petting:
             if self.pet_hearts == 0:
-                self.particles.spawn("heart", self.phys.rx, self.phys.ry - 188, 1)
+                self.stat_pets += 1
+                self.particles.spawn("heart", self.phys.rx, self.phys.ry - 188 + self.phys.floor_sit_y, 1)
                 self.audio.play("headpat")
                 self.mood = min(100.0, self.mood + 1.5)
                 self.tease_score = max(0.0, self.tease_score - 0.8)
@@ -402,19 +565,28 @@ class Game:
                 self.ui.confirm_reset = False
                 self.persist()
                 self.audio.play("click")
-            elif self.ui.inr(p, (R["physics"][0] - 6, R["physics"][1] - 6, 174, 26)):
+            elif self.ui.inr(p, (R["physics"][0] - 6, R["physics"][1] - 6, 178, 26)):
                 self.ui.slider = "physics"
                 self._set_slider(mx)
-            elif self.ui.inr(p, (R["volume"][0] - 6, R["volume"][1] - 6, 174, 26)):
+            elif self.ui.inr(p, (R["volume"][0] - 6, R["volume"][1] - 6, 178, 26)):
                 self.ui.slider = "volume"
                 self._set_slider(mx)
-            elif self.ui.inr(p, (166, R["topmost"][1] - 4, 308, 26)):
+            elif self.ui.inr(p, (154, R["topmost"][1] - 3, 330, 24)):
                 self.saves.data["topmost"] = not self.saves.data["topmost"]
                 self.apply_topmost()
                 self.audio.play("click")
                 self.persist()
-            elif self.ui.inr(p, (166, R["free_life"][1] - 4, 308, 26)):
+            elif self.ui.inr(p, (154, R["free_life"][1] - 3, 330, 24)):
                 self.saves.data["free_life"] = not self.saves.data["free_life"]
+                self.audio.play("click")
+                self.persist()
+            elif self.ui.inr(p, (154, R["weather_rain"][1] - 3, 330, 24)):
+                self.toggle_rain(silent=True)
+                self.audio.play("click")
+            elif self.ui.inr(p, (154, R["real_time_sync"][1] - 3, 330, 24)):
+                self.saves.data["real_time_sync"] = not self.saves.data["real_time_sync"]
+                if self.saves.data["real_time_sync"]:
+                    self.sync_real_time_light(silent=True)
                 self.audio.play("click")
                 self.persist()
             elif self.ui.inr(p, R["scale"]):
@@ -440,7 +612,25 @@ class Game:
                 self.ui.confirm_reset = False
             return
 
-        # 2. RPS minigame buttons
+        # 2. Chat bar & quick-reply chips
+        if self.ui.chat_open:
+            cr = self.ui.chat_rects()
+            for rect, _, payload in cr["chips"]:
+                if self.ui.inr(p, rect):
+                    self.audio.play("click")
+                    self.submit_chat(payload)
+                    return
+            if self.ui.inr(p, cr["send"]):
+                self.audio.play("click")
+                if self.ui.chat_text.strip():
+                    txt = self.ui.chat_text
+                    self.ui.chat_text = ""
+                    self.submit_chat(txt)
+                return
+            if self.ui.inr(p, cr["bar"]):
+                return
+
+        # 3. RPS minigame buttons
         if self.ui.rps_phase is not None:
             RR = self.ui.rps_rects()
             if self.ui.inr(p, RR["close"]):
@@ -456,11 +646,12 @@ class Game:
                         self.emote("smug", 1.3)
                         return
 
-        # 3. Corner HUD buttons
+        # 4. Corner HUD buttons
         b = self.ui.ui_hit(mx, my)
         if b:
             self.audio.play("click")
             if b == "gear":
+                self.ui.close_chat()
                 self.ui.settings = True
                 self.ui.confirm_reset = False
             elif b == "shirt":
@@ -471,6 +662,13 @@ class Game:
                 self.cycle_light()
             elif b == "music":
                 self.toggle_music()
+            elif b == "rain":
+                self.toggle_rain()
+            elif b == "chat":
+                if self.ui.chat_open:
+                    self.ui.close_chat()
+                else:
+                    self.ui.open_chat()
             elif b == "game":
                 if self.ui.rps_phase is None:
                     self.ui.start_rps()
@@ -492,7 +690,7 @@ class Game:
                 self.persist()
             return
 
-        # 4. Movable interactive props (drawer items -> boba -> pillow)
+        # 5. Movable interactive props
         if self.room.gift_item_hit(mx, my):
             self.mode = "gift_item"
             self.room.gift_item["returning"] = False
@@ -520,7 +718,7 @@ class Game:
             self.audio.play("click")
             return
 
-        # 5. Character LMB interaction
+        # 6. Character LMB interaction
         zone = self.phys.hit_zone(mx, my, self.outfit)
         if zone:
             self.mode = "press"
@@ -531,9 +729,11 @@ class Game:
             self.shake_acc = 0.0
             return
 
-        # 6. Clickable room decor & furniture
+        # 7. Clickable room decor & furniture
         if self.room.fairy_hit(mx, my):
             self.toggle_fairy()
+        elif self.room.window_glass_hit(mx, my):
+            self.toggle_rain()
         elif self.room.curtains_hit(mx, my):
             self.toggle_curtains()
         elif self.ui.inr(p, (176, 72, 48, 66)):
@@ -562,10 +762,12 @@ class Game:
             self.emote("flustered", 1.8)
             self.say("laundry")
         elif self.ui.inr(p, (214, 270, 34, 20)):
-            self.room.manga_flip = 1.0
-            self.audio.play("page")
-            self.emote("starry", 2.0)
-            self.say("manga")
+            if not self.phys.is_floor_manga:
+                self.room.manga_flip = 1.0
+                self.audio.play("page")
+                self.phys.go_to_activity("read_manga")
+                self.emote("starry", 2.2)
+                self.say("manga")
         elif self.ui.inr(p, (26, 38, 128, 226)):
             self.start_wardrobe()
 
@@ -585,10 +787,10 @@ class Game:
 
         phys_k = self.saves.data["physics"]
 
-        # RMB Headpat (Care interaction -> reduces tease, builds Affinity & works even on bed!)
+        # RMB Headpat
         if self.rmb_petting and self.phys.head_rmb_hit(mx, my):
             hx = self.phys.rx + self.phys.sp["head"].x
-            hy = self.phys.ry - 166 + self.phys.crouch_y
+            hy = self.phys.ry - 166 + self.phys.floor_sit_y
             self.phys.sp["head"].pulled = True
             self.phys.sp["head"].tx = clamp((mx - self.phys.rx) * 0.28, -7.0, 7.0)
             self.phys.sp["head"].ty = clamp((my - hy) * 0.14, -3.0, 4.0)
@@ -600,8 +802,9 @@ class Game:
             if self.pet_acc > 22:
                 self.pet_acc = 0.0
                 self.pet_hearts += 1
+                self.stat_pets += 1
                 self.tease_score = max(0.0, self.tease_score - 0.65)
-                self.particles.spawn("heart", hx, self.phys.ry - 190 + self.phys.crouch_y, 2 if self.aff_lvl >= 4 else 1)
+                self.particles.spawn("heart", hx, self.phys.ry - 190 + self.phys.floor_sit_y, 2 if self.aff_lvl >= 4 else 1)
                 self.mood = min(100.0, self.mood + 3.0)
                 self.add_affinity(4)
                 if self.pet_hearts % 2 == 1:
@@ -611,18 +814,18 @@ class Game:
             self.idle_t = 0.0
             return
 
-        # Draggable Gift / Candy Box (extra Care bonus if brought while sitting on bed!)
+        # Draggable Gift / Candy Box
         if self.mode == "gift_item":
             gf = self.room.gift_item
             gf["x"], gf["y"] = clamp(mx, 18, VW - 18), clamp(my, 16, FLOOR_Y - 12)
-            if math.hypot(gf["x"] - self.phys.rx, gf["y"] - (self.phys.ry - 135)) < 46:
+            if math.hypot(gf["x"] - self.phys.rx, gf["y"] - (self.phys.ry - 135 + self.phys.floor_sit_y)) < 46:
                 self.mode = None
                 gf["returning"] = True
                 self.audio.play("gift")
                 self.tease_score = max(0.0, self.tease_score - 2.5)
                 on_bed = self.phys.sitting
-                self.particles.spawn("heart", self.phys.rx, self.phys.ry - 186, 7 if on_bed else 5)
-                self.particles.spawn("star", self.phys.rx, self.phys.ry - 165, 6)
+                self.particles.spawn("heart", self.phys.rx, self.phys.ry - 186 + self.phys.floor_sit_y, 7 if on_bed else 5)
+                self.particles.spawn("star", self.phys.rx, self.phys.ry - 165 + self.phys.floor_sit_y, 6)
                 self.phys.kick_all(random.choice((-1, 1)), 0.7, phys_k)
                 self.emote("romantic" if on_bed else "flustered", 3.0)
                 self.say("gift_bed_care" if on_bed else "gift")
@@ -635,12 +838,12 @@ class Game:
         if self.mode == "glasses_item":
             gi = self.room.glasses_item
             gi["x"], gi["y"] = clamp(mx, 18, VW - 18), clamp(my, 16, FLOOR_Y - 10)
-            if math.hypot(gi["x"] - self.phys.rx, gi["y"] - (self.phys.ry - 161)) < 34:
+            if math.hypot(gi["x"] - self.phys.rx, gi["y"] - (self.phys.ry - 161 + self.phys.floor_sit_y)) < 34:
                 self.mode = None
                 gi["returning"] = True
                 self.accessory = 0 if self.accessory == 1 else 1
                 self.audio.play("sparkle")
-                self.particles.spawn("star", self.phys.rx, self.phys.ry - 165, 7)
+                self.particles.spawn("star", self.phys.rx, self.phys.ry - 165 + self.phys.floor_sit_y, 7)
                 self.emote("smug" if self.accessory == 1 else "normal", 2.5)
                 self.say(f"acc_{self.accessory}")
                 self.mood = min(100.0, self.mood + 4.0)
@@ -648,23 +851,25 @@ class Game:
                 self.persist()
             return
 
-        # Draggable Retro Camera -> Selfie Flash!
+        # Draggable Retro Camera -> Selfie Flash + Polaroid Card!
         if self.mode == "camera_item":
             ci = self.room.camera_item
             ci["x"], ci["y"] = clamp(mx, 18, VW - 18), clamp(my, 16, FLOOR_Y - 12)
-            if math.hypot(ci["x"] - self.phys.rx, ci["y"] - (self.phys.ry - 135)) < 46:
+            if math.hypot(ci["x"] - self.phys.rx, ci["y"] - (self.phys.ry - 135 + self.phys.floor_sit_y)) < 46:
                 self.mode = None
                 ci["returning"] = True
+                self.stat_selfies += 1
                 self.room.trigger_flash()
                 self.audio.play("shutter")
                 self.phys.wave_t = 1.6
                 self.phys.kick_all(random.choice((-1, 1)), 0.75, phys_k)
-                self.particles.spawn("star", self.phys.rx, self.phys.ry - 165, 9)
-                self.particles.spawn("heart", self.phys.rx, self.phys.ry - 188, 2)
+                self.particles.spawn("star", self.phys.rx, self.phys.ry - 165 + self.phys.floor_sit_y, 9)
+                self.particles.spawn("heart", self.phys.rx, self.phys.ry - 188 + self.phys.floor_sit_y, 2)
                 self.emote("starry", 2.6)
                 self.say("selfie")
                 self.mood = min(100.0, self.mood + 6.0)
                 self.add_affinity(10)
+                self._snap_polaroid_next = True
                 self.persist()
             return
 
@@ -677,12 +882,11 @@ class Game:
             pl["vang"] = clamp(dx * 14.0, -280, 280)
             return
 
-        # Draggable Bubble Tea (extra Care bonus if brought while sitting on bed!)
         if self.mode == "boba":
             bb = self.room.boba
             bb["x"] = clamp(mx, 14, VW - 14)
             bb["y"] = clamp(my, 16, FLOOR_Y - 12)
-            if math.hypot(bb["x"] - self.phys.rx, bb["y"] - (self.phys.ry - 150)) < 36:
+            if math.hypot(bb["x"] - self.phys.rx, bb["y"] - (self.phys.ry - 150 + self.phys.floor_sit_y)) < 36:
                 self.mode = None
                 bb["drink_t"] = 2.3
                 bb["returning"] = False
@@ -692,8 +896,8 @@ class Game:
                 self.mood = min(100.0, self.mood + (15.0 if on_bed else 12.0))
                 self.say("boba_bed_care" if on_bed else "boba")
                 self.audio.play("sip")
-                self.particles.spawn("heart", self.phys.rx, self.phys.ry - 188, 5 if on_bed else 3)
-                self.particles.spawn("star", self.phys.rx, self.phys.ry - 178, 3)
+                self.particles.spawn("heart", self.phys.rx, self.phys.ry - 188 + self.phys.floor_sit_y, 5 if on_bed else 3)
+                self.particles.spawn("star", self.phys.rx, self.phys.ry - 178 + self.phys.floor_sit_y, 3)
                 self.add_affinity(18 if on_bed else 12)
                 self.persist()
             return
@@ -707,6 +911,8 @@ class Game:
 
         if self.mode == "press" and math.hypot(mx - self.press[0], my - self.press[1]) > 5:
             if self.press_zone in ("armL", "armR"):
+                if self.phys.is_floor_manga:
+                    self.phys.stand_up("stand")
                 self.mode = "arm_grab"
                 self.grab_part = self.press_zone
                 self.phys.sp[self.grab_part].pulled = True
@@ -741,7 +947,7 @@ class Game:
             sp = self.phys.sp[part]
             px_loc, py_loc = PIVOTS[part]
             sh_x = self.phys.rx + (px_loc - OX)
-            sh_y = self.phys.ry + (py_loc - OY) + self.phys.breath_y + self.phys.crouch_y
+            sh_y = self.phys.ry + (py_loc - OY) + self.phys.breath_y + self.phys.floor_sit_y
             vx, vy = mx - sh_x, my - sh_y
             dist = max(1.0, math.hypot(vx, vy))
             ang = math.degrees(math.atan2(vx, vy))
@@ -778,7 +984,7 @@ class Game:
             elif self.grab_part in ("tie", "skirt"):
                 self.emote("flustered", 1.4)
             if self.grab_part == "head":
-                if not self.phys.sitting:
+                if not self.phys.sitting and not self.phys.is_floor_manga:
                     self.phys.rx = clamp(self.phys.rx + px * 0.035, 42, VW - 42)
                 self.phys.sp["hairL"].kick(dx * 3.5, dy * 1.8, phys_k * 0.4)
                 self.phys.sp["hairR"].kick(dx * 3.5, dy * 1.8, phys_k * 0.4)
@@ -850,7 +1056,6 @@ class Game:
             self.grab_part = None
 
         elif self.mode == "drag":
-            # Drop Marin onto the bed -> she hops onto the bed edge & pulls out her smartphone!
             if 388 <= self.phys.rx <= 548 and self.phys.ry <= 306 and abs(self.phys.vx) < 280:
                 nap = self.room.is_pitch_dark()
                 self.phys.sit_on_bed(nap=nap)
@@ -868,6 +1073,10 @@ class Game:
             d = 1 if self.phys.rx > mx else -1
             z = self.press_zone
             busy_ai = self.phys.ai_state in ("read_manga", "bed_phone")
+            # Clicking her while she's seated reading manga -> she neatly puts the manga down & stands up!
+            if self.phys.ai_state == "read_manga":
+                self.phys.stand_up("stand")
+                self.audio.play("page")
             if z in ("armL", "armR"):
                 self.phys.sp[z].kick((-1 if z == "armL" else 1) * 240, -130, phys_k)
                 self.phys.sp["hairL"].kick(d * 95, -35, phys_k)
@@ -925,15 +1134,19 @@ class Game:
         dt = min(dt, 0.05)
         mx, my = self.mouse
         phys_k = self.saves.data["physics"]
-        interacting = (self.mode is not None or self.rmb_petting or self.ui.rps_phase is not None)
+        interacting = (self.mode is not None or self.rmb_petting or self.ui.rps_phase is not None or self.ui.chat_open)
 
-        # Smooth UI modal fade
         self.ui.update_ui(dt)
-
-        # Tease score gentle decay
         self.tease_score = max(0.0, self.tease_score - 0.18 * dt)
 
-        # 1. Character kinematics, springs, Living Room AI & Affinity idle animations
+        # Periodic real-time lighting sync if enabled
+        if self.saves.data.get("real_time_sync", False):
+            self.rt_sync_cd -= dt
+            if self.rt_sync_cd <= 0:
+                self.rt_sync_cd = 30.0
+                self.sync_real_time_light(silent=True)
+
+        # 1. Character kinematics, springs, multi-phase collar & Living Room AI
         boba_busy = (self.mode == "boba" or self.room.boba["drink_t"] > 0 or self.room.boba["returning"])
         land_imp, idle_ev = self.phys.update(
             dt, self.mouse, self.mode == "drag", self.grab,
@@ -941,11 +1154,29 @@ class Game:
             aff_lvl=self.aff_lvl,
             free_life=self.saves.data.get("free_life", True),
             boba_busy=boba_busy,
+            music_on=self.music_on,
+            rain_on=self.room.weather_rain,
+            idle_t=self.idle_t,
         )
 
-        if idle_ev == "blown_kiss":
+        py_top = self.phys.ry - 186 + self.phys.floor_sit_y
+        if idle_ev == "collar_commit_relax":
+            self.collar_relaxed = True
+            self.audio.play("cloth")
+            self.emote("flustered", 2.8)
+            self.particles.spawn("heart", self.phys.rx, py_top, 3)
+        elif idle_ev == "collar_done_relax":
+            self.emote("romantic", 2.6)
+            self.persist()
+        elif idle_ev == "collar_commit_button":
+            self.collar_relaxed = False
+            self.audio.play("cloth")
+            self.emote("pout", 2.6)
+        elif idle_ev == "collar_done_button":
+            self.persist()
+        elif idle_ev == "blown_kiss":
             self.emote("romantic", 2.2)
-            self.particles.spawn("kiss_heart", self.phys.rx + 12, self.phys.ry - 154, 1)
+            self.particles.spawn("kiss_heart", self.phys.rx + 12, self.phys.ry - 154 + self.phys.floor_sit_y, 1)
             self.audio.play("headpat")
             self.say("kiss_idle")
         elif idle_ev == "hair_tuck":
@@ -958,7 +1189,6 @@ class Game:
             self.say("ai_nap")
             self.particles.spawn("zzz", self.phys.rx + 18, self.phys.ry - 190, 1)
         elif idle_ev == "ai_enter_read_manga":
-            self.room.manga_flip = 1.0
             self.audio.play("page")
             if self.room.is_dim_or_dark() and not self.room.lamp_on:
                 self.emote("pout", 2.6)
@@ -967,19 +1197,26 @@ class Game:
                 self.emote("starry", 2.5)
                 self.say("ai_manga")
         elif idle_ev == "ai_manga_flip":
-            self.room.manga_flip = 1.0
             self.audio.play("page")
-            if random.random() < 0.45:
-                self.emote("pet", 1.8)
+            r = random.random()
+            if r < 0.35:
+                self.emote("pet", 2.0)
+                self.say("ai_manga_react")
+            elif r < 0.60:
+                self.emote("surprised", 1.8)
         elif idle_ev == "ai_phone_chuckle":
             if random.random() < 0.55:
                 self.emote("pet", 1.7)
                 self.particles.spawn("star", self.phys.rx + 14, self.phys.ry - 150, 2)
         elif idle_ev == "ai_enter_watch_window":
-            self.emote("romantic" if self.room.light in (2, 3) else "normal", 2.5)
-            self.say("ai_window_night" if self.room.light in (2, 3) else "ai_window_day")
+            if self.room.weather_rain:
+                self.emote("romantic", 2.8)
+                self.say("ai_window_rain")
+            else:
+                self.emote("romantic" if self.room.light in (2, 3) else "normal", 2.5)
+                self.say("ai_window_night" if self.room.light in (2, 3) else "ai_window_day")
         elif idle_ev == "ai_enter_wardrobe_check":
-            self.emote("smug", 2.2)
+            self.emote("smug", 2.4)
             self.say("ai_wardrobe")
         elif idle_ev == "ai_enter_self_boba":
             if not boba_busy:
@@ -987,33 +1224,41 @@ class Game:
                 self.audio.play("sip")
                 self.emote("pet", 2.2)
                 self.say("ai_boba")
+        elif idle_ev == "ai_enter_lofi_dance":
+            self.emote("pet", 2.5)
+            self.say("ai_dance")
+            self.particles.spawn("note", self.phys.rx, py_top, 2)
+        elif idle_ev == "ai_dance_note":
+            self.particles.spawn("note", self.phys.rx, py_top, 1)
+        elif idle_ev == "ai_enter_stretch":
+            self.emote("pet", 2.6)
+            self.say("ai_stretch")
+        elif idle_ev == "ai_enter_attention":
+            self.emote("romantic", 2.8)
+            self.say("ai_attention")
+            self.particles.spawn("heart", self.phys.rx, py_top, 2)
 
-        # Canon top-button relaxation animation (Affinity Lv.4+ & mood >= 80, Outfit 0 or 4)
+        # Autonomous Canon Top-Button Collar Relaxation (Outfits 0, 1 Home Shirt & 4 Canon Shirt!)
         self.collar_check_cd = max(0.0, self.collar_check_cd - dt)
-        if self.outfit in (0, 4) and not interacting and not self.phys.air and not self.room.is_pitch_dark():
-            if not self.collar_relaxed and self.aff_lvl >= 4 and self.mood >= 80.0 and self.tease_score < 2.0 and self.collar_check_cd <= 0:
-                self.collar_relaxed = True
-                self.collar_check_cd = 20.0
-                self.phys.collar_anim_t = 1.15
-                self.emote("flustered", 3.2)
+        if (self.outfit in (0, 1, 4) and self.phys.collar_seq_phase == 0
+                and not interacting and not self.phys.air and not self.room.is_pitch_dark()):
+            if (not self.collar_relaxed and self.aff_lvl >= 4 and self.mood >= 80.0
+                    and self.tease_score < 2.0 and self.collar_check_cd <= 0):
+                self.collar_check_cd = 22.0
+                self.phys.start_collar_anim(True)
+                self.emote("flustered", 3.4)
                 self.say("collar_relax")
-                self.particles.spawn("heart", self.phys.rx, self.phys.ry - 186, 3)
-                self.audio.play("headpat")
-                self.persist()
             elif self.collar_relaxed and self.tease_score >= 4.2:
-                self.collar_relaxed = False
                 self.tease_score = 1.8
                 self.collar_check_cd = 18.0
-                self.phys.collar_anim_t = 0.95
-                self.emote("pout", 2.6)
+                self.phys.start_collar_anim(False)
+                self.emote("pout", 2.8)
                 self.say("collar_button")
-                self.audio.play("snap")
-                self.persist()
 
-        # Soft shy smile when hovering gently near her face/shoulder
+        # Soft shy smile when hovering gently near her face
         self.near_cd = max(0.0, self.near_cd - dt)
         if not interacting and not self.ui.settings and not self.room.is_pitch_dark() and self.phys.ai_state != "bed_nap":
-            if abs(mx - self.phys.rx) < 42 and abs(my - (self.phys.ry - 154 + self.phys.crouch_y)) < 36:
+            if abs(mx - self.phys.rx) < 42 and abs(my - (self.phys.ry - 154 + self.phys.floor_sit_y)) < 36:
                 self.near_hover_t += dt
                 if self.near_hover_t > 1.35 and self.near_cd <= 0 and self.emotion == "normal":
                     self.near_cd = 9.0
@@ -1052,13 +1297,13 @@ class Game:
             self.tease_score += 1.0
             self.emote("smug", 2.5)
             self.say("pillow_counter")
-            self.particles.spawn("star", self.phys.rx, self.phys.ry - 166, 7)
+            self.particles.spawn("star", self.phys.rx, self.phys.ry - 166 + self.phys.floor_sit_y, 7)
             self.audio.play("boing")
         elif ev.get("pillow_hit"):
             self.tease_score += 1.2
             self.emote("surprised", 2.0)
             self.say("pillow")
-            self.particles.spawn("excl", self.phys.rx + 22, self.phys.ry - 190, 1)
+            self.particles.spawn("excl", self.phys.rx + 22, self.phys.ry - 190 + self.phys.floor_sit_y, 1)
             self.audio.play("pillow")
 
         # 3. RPS Minigame update
@@ -1098,7 +1343,7 @@ class Game:
         romantic_vibe = (self.room.light == 3) or (self.mood >= 82.0) or (self.aff_lvl >= 4)
         self.particles.update(dt, sun_vis, lamp_vis, romantic_vibe=romantic_vibe)
 
-        # 5. Sleepy dark-room / bed-nap Zzz particles
+        # 5. Sleepy Zzz particles
         if (self.room.is_pitch_dark() or self.phys.ai_state == "bed_nap") and not self.phys.air and not interacting:
             self.sleepy_cd -= dt
             if self.sleepy_cd <= 0:
@@ -1107,7 +1352,7 @@ class Game:
                 if random.random() < 0.42:
                     self.say("sleepy_dark")
 
-        # 6. Emotion / speech / idle timers
+        # 6. Emotion / speech typewriter / idle timers
         self.emo_t -= dt
         if self.emo_t <= 0:
             self.emotion = self.base_emotion()
@@ -1115,9 +1360,10 @@ class Game:
         if self.speech_t > 0:
             self.speech_t -= dt
             prev = int(self.speech_shown)
-            self.speech_shown = min(len(self.speech), self.speech_shown + dt * 28)
+            self.speech_shown = min(len(self.speech), self.speech_shown + dt * 30)
             if int(self.speech_shown) != prev and prev % 2 == 0 and prev < len(self.speech):
-                self.audio.blip()
+                if self.speech[prev] not in (" ", "\n", ".", ","):
+                    self.audio.blip()
 
         self.mood += (55.0 - self.mood) * 0.004 * dt
         self.idle_t += dt
@@ -1137,11 +1383,16 @@ class Game:
         else:
             self.hover_obj = self.room.hit_object_name(mx, my, char_hit=char_hit)
 
+        chat_hov = False
+        if self.ui.chat_open and not self.ui.settings:
+            cr = self.ui.chat_rects()
+            chat_hov = self.ui.inr((mx, my), cr["send"]) or any(self.ui.inr((mx, my), r) for r, _, _ in cr["chips"])
+
         if self.rmb_petting:
             self.cursor_state = "hand_heart"
         elif self.mode in ("drag", "spring_grab", "arm_grab", "pillow", "boba", "glasses_item", "gift_item", "camera_item"):
             self.cursor_state = "hand_grab"
-        elif self.ui.settings or ui_btn or self.hover_obj or char_hit:
+        elif self.ui.settings or ui_btn or self.hover_obj or char_hit or chat_hov:
             self.cursor_state = "hand_open"
         else:
             self.cursor_state = "arrow"
@@ -1149,15 +1400,15 @@ class Game:
     # ------------------------------------------------ rendering
     def draw(self):
         c = self.canvas
-        self.room.draw_background(c, self.assets, hover_obj=self.hover_obj)
+        self.room.draw_background(c, self.assets, hover_obj=self.hover_obj, manga_picked_up=self.phys.is_floor_manga)
         self.room.draw_bed_pillow(c, self.assets, self.mode, hover_obj=self.hover_obj)
         self.particles.draw_ambient(c)
 
-        # Dynamic floor / bed-edge shadow beneath Marin
+        # Dynamic floor / bed-edge / floor-sit shadow
         if self.phys.sitting:
-            self.room.draw_floor_shadow(
-                c, self.phys.rx, 46.0, base_w=46, base_h=8, max_alpha=64, squash=0.0
-            )
+            self.room.draw_floor_shadow(c, self.phys.rx, 46.0, base_w=46, base_h=8, max_alpha=64, squash=0.0)
+        elif self.phys.is_floor_manga:
+            self.room.draw_floor_shadow(c, self.phys.rx, 0.0, base_w=72, base_h=12, max_alpha=92, squash=0.0)
         else:
             self.room.draw_floor_shadow(
                 c, self.phys.rx, FLOOR_Y - self.phys.ry,
@@ -1171,10 +1422,11 @@ class Game:
         )
         lit = self.room.tint_surface(comp, self.phys.rx, self.phys.ry - 100)
         sq = self.phys.land_sq.val
+        sx_total = (1.0 - sq * 0.85) * self.phys.twirl_scale_x()
         blit_pivoted(c, lit, (COX, COY), (self.phys.rx, self.phys.ry),
-                     angle=0.0, sx=1.0 - sq * 0.85, sy=1.0 + sq)
+                     angle=0.0, sx=sx_total, sy=1.0 + sq)
 
-        # Subtle 16-bit Bayer-dithered cyan phone screen glow illuminating Marin's phone & face!
+        # Subtle 16-bit Bayer-dithered cyan phone glow in dim/dark room
         if (self.phys.ai_state == "bed_phone" and self.phys.sitting and not self.phys.air
                 and self.mode != "drag" and (self.room.light in (2, 3) or self.room.curtains_closed)):
             c.blit(self._phone_halo, (int(self.phys.rx - 28), int(self.phys.ry - 178)),
@@ -1182,17 +1434,27 @@ class Game:
 
         self.room.draw_props(c, self.assets, self.mode, hover_obj=self.hover_obj)
         self.particles.draw_foreground(c)
+
+        # Capture crisp Polaroid Selfie snapshot cleanly right before flash & HUD!
+        if self._snap_polaroid_next:
+            self._snap_polaroid_next = False
+            px = int(clamp(self.phys.rx - 36, 0, VW - 72))
+            py = int(clamp(self.phys.ry - 188 + self.phys.floor_sit_y, 0, VH - 72))
+            snap = c.subsurface((px, py, 72, 72)).copy()
+            cap = self.player_name[:9] if self.player_name else "Marin"
+            self.ui.trigger_polaroid(snap, label=cap)
+
         self.room.draw_flash(c)
         if self.speech_t > 0:
-            self.ui.draw_speech(c, self.phys.rx, self.phys.ry, self.speech, self.speech_shown)
+            self.ui.draw_speech(c, self.phys.rx, self.phys.ry, self.speech, self.speech_shown,
+                                head_offset_y=self.phys.floor_sit_y)
         self.ui.draw_hud(
             c, self.mood, self.aff_lvl, self.affinity_xp,
             self.rps_wins, self.hint_t, self.assets, self.phys.rx, self.phys.ry,
-            music_on=self.music_on,
+            music_on=self.music_on, rain_on=self.room.weather_rain, mouse_pos=self.mouse,
         )
         self.ui.draw_settings(c, self.saves.data)
 
-        # Render custom 16-bit pixel cursor right on top of the native canvas
         if self.mouse_in_window:
             self.ui.draw_cursor(c, self.mouse, self.cursor_state)
 
@@ -1213,13 +1475,37 @@ class Game:
                     self.mouse_in_window = True
                 elif ev.type == pygame.WINDOWLEAVE:
                     self.mouse_in_window = False
-                elif ev.type == pygame.KEYDOWN and ev.key == pygame.K_ESCAPE:
-                    if self.ui.settings:
-                        self.ui.settings = False
-                        self.ui.confirm_reset = False
-                        self.persist()
-                    elif self.ui.rps_phase is not None:
-                        self.ui.close_rps()
+                elif ev.type == pygame.TEXTINPUT:
+                    if self.ui.chat_open and not self.ui.settings:
+                        if self._skip_next_textinput:
+                            self._skip_next_textinput = False
+                        elif len(self.ui.chat_text) < 64:
+                            self.ui.chat_text += ev.text
+                elif ev.type == pygame.KEYDOWN:
+                    if self.ui.chat_open and not self.ui.settings:
+                        if ev.key == pygame.K_ESCAPE:
+                            self.ui.close_chat()
+                        elif ev.key == pygame.K_BACKSPACE:
+                            self.ui.chat_text = self.ui.chat_text[:-1]
+                        elif ev.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                            if self.ui.chat_text.strip():
+                                txt = self.ui.chat_text
+                                self.ui.chat_text = ""
+                                self.submit_chat(txt)
+                            else:
+                                self.ui.close_chat()
+                    else:
+                        if ev.key == pygame.K_ESCAPE:
+                            if self.ui.settings:
+                                self.ui.settings = False
+                                self.ui.confirm_reset = False
+                                self.persist()
+                            elif self.ui.rps_phase is not None:
+                                self.ui.close_rps()
+                        elif not self.ui.settings and ev.key in (pygame.K_RETURN, pygame.K_KP_ENTER, pygame.K_t):
+                            self.ui.open_chat()
+                            if ev.key == pygame.K_t:
+                                self._skip_next_textinput = True
                 elif ev.type == pygame.MOUSEBUTTONDOWN:
                     if ev.button == 1:
                         self.on_lmb_down(ev.pos[0] / sc, ev.pos[1] / sc)

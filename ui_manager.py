@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""UIManager: Corner HUD, Lo-Fi Note button, Smooth Settings Modal, RPS Minigame, and Custom 16-bit Pixel Cursors."""
+"""UIManager: Corner HUD, Offline Chat Bar + Quick Chips, Polaroid Selfie Frame, Smooth Settings Modal, RPS & Pixel Cursors."""
 import random
 import pygame
 from constants import VERSION, VW, VH, OUT, WHITE, PINK, MINT, SKIN, SHIRT, TIE, GOLD, clamp
@@ -16,6 +16,10 @@ BULB_P = ["..####..", ".##++##.", "##+#####", "########", "########", ".######."
           "..####..", "..====..", "..====..", "...==..."]
 NOTE_P = ["....######", "...#######", "...##...##", "...##...##", "...##...##",
           "..###..###", ".####.####", ".###...###"]
+RAIN_P = ["...####...", ".########.", "##########", ".########.", "..........",
+          "..+..+..+.", ".+..+..+.."]
+CHAT_P = [".########.", "##########", "##++##++##", "##########", ".########.",
+          "..###.....", ".##......."]
 GAME_P = ["..########..", ".##########.", "##+##++##+##", "#####++#####", "###+####+###",
           "############", ".###....###.", "..##....##.."]
 HAND_P = ["....#.....", "..#.#.#...", "..#.#.#.#.", "..#.#.#.#.", "..#######.", "#.#######.",
@@ -78,6 +82,13 @@ CUR_HAND_HEART_P = [
     "...#####...",
 ]
 
+QUICK_CHIPS = [
+    ("Привет!", "Привет!"),
+    ("Комплимент", "Ты очень красивая и милая!"),
+    ("Как дела?", "Как дела?"),
+    ("Пофлиртовать", "Я тебя люблю, поцелуй!"),
+]
+
 
 def pattern_surface(rows, colors, scale=2):
     h, w = len(rows), max(len(r) for r in rows)
@@ -96,7 +107,7 @@ def pattern_surface(rows, colors, scale=2):
 
 
 class UIManager:
-    """Manages HUD buttons, tooltips, speech bubble, smooth Settings modal, RPS Minigame & Pixel Cursors."""
+    """Manages HUD, Chat UI + Quick Chips, Polaroid Selfie Frame, Smooth Settings Modal, RPS & Pixel Cursors."""
 
     def __init__(self):
         self.font = pygame.font.Font(None, 18)
@@ -108,15 +119,17 @@ class UIManager:
             "acc":   pattern_surface(ACC_P,   {"#": PINK, "+": WHITE}, scale=2),
             "bulb":  pattern_surface(BULB_P,  {"#": (255, 228, 126), "+": WHITE, "=": (154, 154, 170)}, scale=2),
             "music": pattern_surface(NOTE_P,  {"#": (255, 174, 212)}, scale=2),
+            "rain":  pattern_surface(RAIN_P,  {"#": (184, 214, 246), "+": (122, 198, 255)}, scale=2),
             "game":  pattern_surface(GAME_P,  {"#": MINT, "+": WHITE}, scale=2),
+            "chat":  pattern_surface(CHAT_P,  {"#": (255, 242, 248), "+": PINK}, scale=2),
             "hand":  pattern_surface(HAND_P,  {"#": SKIN}, scale=2),
             "smile": pattern_surface(SMILE_P, {"#": (255, 214, 96)}, scale=2),
             "star":  pattern_surface(STAR_P,  {"#": (255, 246, 174)}, scale=2),
             "excl":  pattern_surface(EXCL_P,  {"#": (255, 96, 102)}, scale=2),
             "zzz":   pattern_surface(ZZZ_P,   {"#": (176, 198, 255)}, scale=2),
+            "note":  pattern_surface(NOTE_P,  {"#": (255, 214, 146)}, scale=1),
         }
 
-        # Custom 16-bit pixel cursors (rendered natively on the 640x360 canvas)
         self.cursors = {
             "arrow":      (pattern_surface(CUR_ARROW_P,      {"#": (255, 236, 244), "+": WHITE}, scale=1), (1, 1)),
             "hand_open":  (pattern_surface(CUR_HAND_OPEN_P,  {"#": SKIN}, scale=1), (5, 2)),
@@ -130,7 +143,9 @@ class UIManager:
             "acc":   (78, 10),
             "bulb":  (112, 10),
             "music": (146, 10),
-            "game":  (180, 10),
+            "rain":  (180, 10),
+            "game":  (214, 10),
+            "chat":  (532, 320),
             "smile": (566, 320),
             "hand":  (600, 320),
         }
@@ -140,7 +155,9 @@ class UIManager:
             "acc":   "Аксессуар (Очки / Ушки)",
             "bulb":  "Свет / Romantic Glow",
             "music": "16-bit Lo-Fi музыка",
+            "rain":  "Погода: Дождь / Ясно",
             "game":  "Камень-Ножницы-Бумага",
+            "chat":  "Чат с Марин (Enter / T)",
             "smile": "Эмоции (10)",
             "hand":  "Помахать",
         }
@@ -153,6 +170,16 @@ class UIManager:
         self.confirm_reset = False
         self.hover = None
 
+        # Chat UI state
+        self.chat_open = False
+        self.chat_text = ""
+        self.chat_blink = 0.0
+
+        # Polaroid Selfie popup state
+        self.polaroid_t = 0.0
+        self.polaroid_max = 3.4
+        self.polaroid_card = None
+
         # Rock-Paper-Scissors minigame state
         self.rps_phase = None
         self.rps_player = None
@@ -163,17 +190,32 @@ class UIManager:
 
     def panel_rects(self):
         return {
-            "panel":     (146, 32, 348, 296),
-            "close":     (470, 40, 16, 16),
-            "physics":   (308, 78, 162, 14),
-            "volume":    (308, 112, 162, 14),
-            "topmost":   (452, 144, 18, 18),
-            "free_life": (452, 174, 18, 18),
-            "scale":     (386, 206, 84, 22),
-            "reset":     (168, 246, 138, 24),
-            "quit":      (386, 246, 84, 24),
-            "reset_all": (168, 284, 302, 24),
+            "panel":          (134, 16, 372, 330),
+            "close":          (482, 24, 16, 16),
+            "physics":        (316, 56, 166, 14),
+            "volume":         (316, 86, 166, 14),
+            "topmost":        (464, 114, 18, 18),
+            "free_life":      (464, 140, 18, 18),
+            "weather_rain":   (464, 166, 18, 18),
+            "real_time_sync": (464, 192, 18, 18),
+            "scale":          (398, 220, 84, 22),
+            "reset":          (156, 274, 146, 22),
+            "quit":           (398, 274, 84, 22),
+            "reset_all":      (156, 306, 326, 24),
         }
+
+    def chat_rects(self):
+        rects = {
+            "bar":   (104, 320, 374, 26),
+            "send":  (484, 320, 40, 26),
+            "chips": [],
+        }
+        cx = 104
+        for label, payload in QUICK_CHIPS:
+            w = self.font_sm.size(label)[0] + 14
+            rects["chips"].append(((cx, 294, w, 20), label, payload))
+            cx += w + 6
+        return rects
 
     def rps_rects(self):
         return {
@@ -193,14 +235,57 @@ class UIManager:
                 return name
         return None
 
+    def open_chat(self):
+        self.chat_open = True
+        self.rps_phase = None
+        self.chat_blink = 0.0
+        try:
+            pygame.key.start_text_input()
+        except Exception:
+            pass
+
+    def close_chat(self):
+        self.chat_open = False
+        try:
+            pygame.key.stop_text_input()
+        except Exception:
+            pass
+
+    def trigger_polaroid(self, portrait_surf, label="Marin!"):
+        """Build a crisp 16-bit Polaroid card with Marin's snapped portrait and start slide-in."""
+        cw, ch = 78, 96
+        card = pygame.Surface((cw, ch), pygame.SRCALPHA)
+        pygame.draw.rect(card, OUT, (0, 0, cw, ch))
+        pygame.draw.rect(card, (250, 246, 240), (2, 2, cw - 4, ch - 4))
+        # Inner photo frame (66x66)
+        pygame.draw.rect(card, OUT, (5, 5, 68, 68))
+        photo = pygame.transform.scale(portrait_surf, (66, 66))
+        card.blit(photo, (6, 6))
+        # Subtle warm glossy reflection line across photo corner
+        pygame.draw.line(card, (255, 255, 255), (9, 9), (19, 9), 1)
+        pygame.draw.line(card, (255, 255, 255), (9, 9), (9, 17), 1)
+        # Handwritten-style caption & tiny heart cleanly centered in bottom white margin
+        txt = self.font_sm.render(label, False, (86, 56, 74))
+        h_ic = pattern_surface(HEART_P, {"#": PINK, "+": WHITE}, scale=1)
+        tot_w = txt.get_width() + 4 + h_ic.get_width()
+        x0 = (cw - tot_w) // 2
+        card.blit(txt, (x0, 78))
+        card.blit(h_ic, (x0 + txt.get_width() + 4, 79))
+        self.polaroid_card = pygame.transform.rotate(card, 4.0)
+        self.polaroid_t = self.polaroid_max
+
     def update_ui(self, dt):
         target = 1.0 if self.settings else 0.0
         self.settings_alpha += (target - self.settings_alpha) * min(1.0, dt * 14.0)
         if abs(target - self.settings_alpha) < 0.01:
             self.settings_alpha = target
+        self.chat_blink += dt
+        if self.polaroid_t > 0:
+            self.polaroid_t = max(0.0, self.polaroid_t - dt)
 
     # ------------------------------------------------ RPS logic
     def start_rps(self):
+        self.close_chat()
         self.rps_phase = "choose"
         self.rps_player = None
         self.rps_marin = None
@@ -261,7 +346,7 @@ class UIManager:
         canvas.fill(fill, (x, y, w, h))
         canvas.fill(tuple(min(255, v + 28) for v in fill), (x, y, w, 2))
 
-    def _wrap_text(self, text, max_w=310):
+    def _wrap_text(self, text, max_w=296):
         words = text.split(" ")
         lines, cur = [], ""
         for w in words:
@@ -273,19 +358,19 @@ class UIManager:
                 cur = cand
         if cur:
             lines.append(cur)
-        return lines or [""]
+        return lines[:3] if lines else [""]
 
-    def draw_speech(self, canvas, rx, ry, speech, shown_len):
+    def draw_speech(self, canvas, rx, ry, speech, shown_len, head_offset_y=0.0):
         if not speech or self.settings:
             return
-        lines = self._wrap_text(speech, max_w=310)
+        lines = self._wrap_text(speech, max_w=296)
         line_h = self.font.get_height() + 2
         tw = max(self.font.size(ln)[0] for ln in lines)
         bw, bh = tw + 18, len(lines) * line_h + 10
         bx = int(clamp(rx - bw // 2, 8, VW - bw - 8))
-        by = int(max(8, ry - 208 - bh))
+        by = int(clamp(ry - 208 + head_offset_y - bh, 44, VH - bh - 56))
         self.frame(canvas, (bx, by, bw, bh), WHITE)
-        tx = int(clamp(rx, bx + 8, bx + bw - 10))
+        tx = int(clamp(rx, bx + 10, bx + bw - 10))
         pygame.draw.polygon(canvas, WHITE, [(tx - 4, by + bh), (tx + 4, by + bh), (tx, by + bh + 6)])
         pygame.draw.line(canvas, OUT, (tx - 5, by + bh), (tx, by + bh + 6), 2)
         pygame.draw.line(canvas, OUT, (tx + 5, by + bh), (tx, by + bh + 6), 2)
@@ -297,16 +382,80 @@ class UIManager:
             rem -= len(ln) + 1
             self.text(canvas, part, bx + 9, by + 6 + idx * line_h, (56, 38, 58), shadow=False)
 
-    def draw_hud(self, canvas, mood, aff_lvl, aff_xp, rps_wins, hint_t, assets, rx, ry, music_on=False):
+    def draw_polaroid(self, canvas):
+        """Smoothly slide-in/fade-out Polaroid selfie card in the left corner."""
+        if self.polaroid_t <= 0 or self.polaroid_card is None:
+            return
+        elapsed = self.polaroid_max - self.polaroid_t
+        if elapsed < 0.32:
+            p = elapsed / 0.32
+            ease = 1.0 - (1.0 - p) ** 3
+            px = int(-90 + ease * 104)
+            alpha = int(clamp(ease * 255, 0, 255))
+        elif self.polaroid_t < 0.45:
+            p = self.polaroid_t / 0.45
+            ease = p * p
+            px = int(-90 + ease * 104)
+            alpha = int(clamp(ease * 255, 0, 255))
+        else:
+            px, alpha = 14, 255
+        card = self.polaroid_card.copy()
+        card.set_alpha(alpha)
+        canvas.blit(card, (px, 52))
+
+    def draw_chat_bar(self, canvas, mouse_pos):
+        """Draw compact Quick Reply chips + Cyrillic pixel input bar at bottom of screen."""
+        if not self.chat_open or self.settings:
+            return
+        cr = self.chat_rects()
+        # 1. Quick-reply chips
+        for rect, label, _ in cr["chips"]:
+            hov = self.inr(mouse_pos, rect)
+            bg = (88, 62, 108) if hov else (44, 34, 62)
+            self.frame(canvas, rect, bg)
+            self.text(canvas, label, rect[0] + rect[2] // 2, rect[1] + 4, (255, 232, 244), center=True, small=True)
+
+        # 2. Text input field
+        bx, by, bw, bh = cr["bar"]
+        self.frame(canvas, (bx, by, bw, bh), (28, 22, 42))
+        if self.chat_text:
+            # Clip left if user types a long message so caret always stays visible!
+            disp = self.chat_text
+            while self.font.size(disp)[0] > bw - 20 and len(disp) > 1:
+                disp = disp[1:]
+            self.text(canvas, disp, bx + 8, by + 6, WHITE, shadow=False)
+            if int(self.chat_blink * 2.2) % 2 == 0:
+                cx = bx + 9 + self.font.size(disp)[0]
+                canvas.fill(PINK, (cx, by + 5, 2, 15))
+        else:
+            self.text(canvas, "Напиши Марин... (Enter — отправить, Esc — закрыть)",
+                      bx + 8, by + 7, (148, 134, 168), shadow=False, small=True)
+            if int(self.chat_blink * 2.2) % 2 == 0:
+                canvas.fill(PINK, (bx + 7, by + 5, 2, 15))
+
+        # 3. Send button
+        sr = cr["send"]
+        hov_s = self.inr(mouse_pos, sr)
+        self.frame(canvas, sr, (226, 98, 146) if hov_s else (178, 72, 114))
+        self.text(canvas, "OK", sr[0] + sr[2] // 2, sr[1] + 6, WHITE, center=True, small=True)
+
+    def draw_hud(self, canvas, mood, aff_lvl, aff_xp, rps_wins, hint_t, assets, rx, ry,
+                 music_on=False, rain_on=False, mouse_pos=(0, 0)):
         # Corner buttons
         for name, (x, y) in self.buttons.items():
             hov = self.hover == name
             active_rps = (name == "game" and self.rps_phase is not None)
             active_mus = (name == "music" and music_on)
+            active_rain = (name == "rain" and rain_on)
+            active_chat = (name == "chat" and self.chat_open)
             if active_rps:
                 bg = (52, 86, 80)
             elif active_mus:
                 bg = (96, 54, 88)
+            elif active_rain:
+                bg = (52, 74, 108)
+            elif active_chat:
+                bg = (118, 58, 92)
             elif hov:
                 bg = (64, 52, 86)
             else:
@@ -331,19 +480,23 @@ class UIManager:
         fw = int(128 * clamp(mood, 0, 100) / 100.0)
         canvas.fill((236, 98, 148), (492, 16, fw, 10))
         canvas.fill((255, 174, 204), (492, 16, fw, 2))
-        # Strictly internal segment ticks (never outside right edge 620!)
         for x_tick in range(508, 616, 16):
             canvas.fill((22, 16, 28), (x_tick, 16, 1, 10))
         extra = f" • КНБ: {rps_wins}" if rps_wins > 0 else ""
         self.text(canvas, f"Affinity Lv.{aff_lvl}{extra}", 547, 34, (255, 224, 238), center=True, small=True)
 
-        # RPS Minigame overlay (when open & settings closed)
-        if self.rps_phase and not self.settings:
+        # Polaroid Selfie card
+        self.draw_polaroid(canvas)
+
+        # Bottom overlays (Chat OR RPS OR brief hint)
+        if self.chat_open and not self.settings:
+            self.draw_chat_bar(canvas, mouse_pos)
+        elif self.rps_phase and not self.settings:
             self._draw_rps(canvas, assets, rx, ry)
         elif hint_t > 0 and not self.settings:
             self.text(
                 canvas,
-                "ЛКМ — тяни/пересади на кровать, подушка, гирлянда, ящики • ПКМ по голове — погладить",
+                "ЛКМ — тяни/кровать/окно (дождь) • ПКМ — погладить • Enter / T — чат с Марин",
                 320, 342, (255, 242, 224), center=True, small=True
             )
 
@@ -381,7 +534,7 @@ class UIManager:
             return
         surf = self._modal_surf
         surf.fill((0, 0, 0, 0))
-        surf.fill((12, 8, 22, int(144 * self.settings_alpha)))
+        surf.fill((12, 8, 22, int(148 * self.settings_alpha)))
 
         R = self.panel_rects()
         self.frame(surf, R["panel"], (42, 34, 58))
@@ -390,13 +543,13 @@ class UIManager:
         pygame.draw.line(surf, WHITE, (x + 4, y + 4), (x + w - 5, y + h - 5), 2)
         pygame.draw.line(surf, WHITE, (x + w - 5, y + 4), (x + 4, y + h - 5), 2)
 
-        self.text(surf, f"Настройки ({VERSION})", 320, 42, GOLD, center=True)
+        self.text(surf, f"Настройки ({VERSION})", 320, 26, GOLD, center=True)
 
         for key, label, vmax in (("physics", "Физика", 1.5), ("volume", "Громкость", 1.0)):
             sx, sy, sw, sh = R[key]
             v = cfg[key]
             frac = clamp(v / vmax, 0.0, 1.0)
-            self.text(surf, label, 168, sy - 2)
+            self.text(surf, label, 156, sy - 2)
             self.text(surf, f"{int(round(v * 100))}%", 258, sy - 2, (210, 206, 228))
             surf.fill(OUT, (sx - 2, sy + 4, sw + 4, 6))
             surf.fill((24, 18, 32), (sx, sy + 5, sw, 4))
@@ -404,25 +557,37 @@ class UIManager:
             kx = sx + int(sw * frac) - 4
             self.frame(surf, (kx, sy, 8, 14), (252, 224, 234))
 
-        # Checkboxes: Always on Top & Free Life AI
-        for key, label in (("topmost", "Поверх всех окон (Always on Top)"),
-                           ("free_life", "Свободная жизнь в комнате (ИИ)")):
+        # 4 Settings checkboxes
+        for key, label in (
+            ("topmost",        "Поверх всех окон (Always on Top)"),
+            ("free_life",      "Свободная жизнь в комнате (ИИ)"),
+            ("weather_rain",   "Погода за окном: Уютный дождь"),
+            ("real_time_sync", "Свет по реальному времени ПК"),
+        ):
             tx, ty, tw, th = R[key]
-            self.text(surf, label, 168, ty + 1)
+            self.text(surf, label, 156, ty + 1)
             self.frame(surf, (tx, ty, tw, th), (24, 18, 32))
             if cfg.get(key, False):
                 surf.fill((120, 232, 146), (tx + 3, ty + 3, tw - 6, th - 6))
 
-        self.text(surf, "Масштаб окна", 168, R["scale"][1] + 4)
+        self.text(surf, "Масштаб окна", 156, R["scale"][1] + 4)
         self.frame(surf, R["scale"], (72, 62, 104))
         self.text(surf, f"x{cfg['scale']} ({VH * cfg['scale']}p)",
                   R["scale"][0] + 42, R["scale"][1] + 4, center=True, small=True)
 
+        # Mini-Statistics bar!
+        stats_txt = (
+            f"Поглаж.: {cfg.get('stat_pets', 0)}  •  КНБ: {cfg.get('rps_wins', 0)}  •  "
+            f"Селфи: {cfg.get('stat_selfies', 0)}  •  Чат: {cfg.get('stat_chats', 0)}"
+        )
+        self.frame(surf, (156, 248, 326, 18), (30, 24, 44))
+        self.text(surf, stats_txt, 319, 251, (255, 224, 238), center=True, small=True)
+
         self.frame(surf, R["reset"], (68, 86, 118))
-        self.text(surf, "Сбросить позу", R["reset"][0] + 69, R["reset"][1] + 5, center=True)
+        self.text(surf, "Сбросить позу", R["reset"][0] + 73, R["reset"][1] + 4, center=True)
 
         self.frame(surf, R["quit"], (122, 52, 68))
-        self.text(surf, "Выход", R["quit"][0] + 42, R["quit"][1] + 5, center=True)
+        self.text(surf, "Выход", R["quit"][0] + 42, R["quit"][1] + 4, center=True)
 
         ra = R["reset_all"]
         self.frame(surf, ra, (164, 52, 64) if self.confirm_reset else (78, 46, 66))
@@ -434,7 +599,6 @@ class UIManager:
         canvas.blit(surf, (0, 0))
 
     def draw_cursor(self, canvas, pos, state="arrow"):
-        """Render the custom 16-bit pixel cursor directly on the native 640x360 canvas."""
         surf, (hx, hy) = self.cursors.get(state, self.cursors["arrow"])
         x, y = int(round(pos[0])) - hx, int(round(pos[1])) - hy
         if -16 <= x <= VW + 4 and -16 <= y <= VH + 4:

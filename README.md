@@ -1,6 +1,6 @@
-# Pixel Room — Marin Kitagawa (`v0.4-beta` — Living Room & Dynamic Affinity Update)
+# Pixel Room — Marin Kitagawa (`v0.5-beta` — Alive, Cute & Chat Update)
 
-A cozy 16-bit interactive pixel-art desktop room & companion featuring **Marin Kitagawa** from *My Dress-Up Darling* (*Sono Bisque Doll wa Koi wo Suru*), built with Python + Pygame-CE (native `640×360` with pixel-perfect DPI-aware Nearest-Neighbor `1x`/`2x`/`3x` scaling, *sel-out* colored outlines, Bayer-dithered lighting, and clamped multi-layer spring-damper physics).
+A cozy 16-bit interactive pixel-art desktop room & companion featuring **Marin Kitagawa** from *My Dress-Up Darling* (*Sono Bisque Doll wa Koi wo Suru*), built with Python + Pygame-CE (native `640×360` with pixel-perfect DPI-aware Nearest-Neighbor `1x`/`2x`/`3x` scaling, *sel-out* colored outlines, Bayer-dithered lighting, offline Russian/English Chat, Cozy Rain weather, and clamped multi-layer spring-damper physics).
 
 > **Download Windows Standalone `.exe` (No Python required):** grab `PixelRoom.exe` directly from the **[Releases](../../releases)** tab!
 >
@@ -10,28 +10,29 @@ A cozy 16-bit interactive pixel-art desktop room & companion featuring **Marin K
 
 ## Screenshots
 
-| Bed Sitting, Phone Glow & Bayer-Dithered Night | Canon Relaxed V-Collar & Living Window | Romantic Glow, Open Drawers & RPS Minigame |
+| Cute Redesign, Relaxed Home Shirt & Offline Chat | Floor-Sitting Manga & Rainy Night Window | Polaroid Selfie, Lo-Fi Dance & Daytime Rain |
 | :---: | :---: | :---: |
-| ![Bed & Phone Glow](screenshots/bed_phone_dither.png) | ![Canon Collar & Day](screenshots/canon_collar_living.png) | ![Romantic Glow & RPS](screenshots/romantic_rps.png) |
+| ![Chat & Cute Redesign](screenshots/cute_chat_home.png) | ![Floor Manga & Rain](screenshots/floor_manga_rain.png) | ![Polaroid & Lo-Fi Dance](screenshots/polaroid_dance_rain.png) |
 
 ---
 
 ## Controls
 
-- **LMB (Drag / Pull / Drop on Bed / Toss):** grab & toss Marin — or **drop her onto the bed** so she sits dangling her legs with her smartphone! Pull her arms, hair strands, tie, skirt, or cheek like elastic springs; throw the bed pillow (**throw it 2–3 times and she catches it & throws it back!**); feed bubble tea; or drag **cosplay glasses**, the **candy/gift box**, and the **retro camera** out of the nightstand drawers.
-- **RMB (Hold & Move on Head):** gentle headpat with a custom pixel heart-hand cursor — her head tilts toward you, eyes close happily, hearts float up, and both Mood & **Affinity** grow.
-- **Click Room Objects (with 1px hover outlines):** toggle hanging **Fairy Lights**, smoothly slide window **curtains**, toggle the **table lamp**, open the **wardrobe** (5 outfits), swap detailed **wall posters** (3 designs), open **nightstand drawers**, bounce the **laundry basket**, or flip the **floor manga**.
-- **Corner Icons:** Settings (`0–150%` physics, volume, *Always on Top*, **Free Life AI toggle**, window scale, Reset Pose, Reset Progress), Wardrobe (5 outfits), Accessories (Cosplay Glasses / Cat Ears), Lighting (incl. **Romantic Glow**), **16-bit Lo-Fi Music Player**, **Rock-Paper-Scissors Minigame**, 10-Emotion switcher, and Wave.
+- **Chat with Marin (`Enter` / `T` or Chat Bubble icon):** type anything in Russian or English (full Cyrillic support + 4 one-click Quick Reply chips!) — flirt, give compliments, tell her your name (`"Меня зовут ..."`), talk about anime/cosplay, or give room commands (`"включи музыку"`, `"включи дождь"`, `"почитай мангу"`, `"сядь на кровать"`, `"переоденься"`, `"давай поиграем"`, `"жарко тут"`).
+- **LMB (Drag / Pull / Drop on Bed / Toss):** grab & toss Marin — or **drop her onto the bed** so she sits dangling her legs with her smartphone! Pull her arms, hair, tie, skirt, or cheek like elastic springs; throw the bed pillow (**throw it 2 times and she catches it & fires it back!**); feed bubble tea; or drag **cosplay glasses**, the **candy/gift box**, and the **retro camera** (with **Polaroid selfie card!**) out of the nightstand drawers.
+- **RMB (Hold & Move on Head):** gentle headpat with a custom pixel heart-hand cursor — builds Mood & **Affinity (Lv.1 → Lv.5)**.
+- **Click Room Objects (1px hover outlines):** click the **open window glass** or **Rain icon** for Cozy Rain, slide **curtains**, toggle **Fairy Lights** and **table lamp**, open the **wardrobe** (5 outfits), swap **wall posters** (3 designs), open **nightstand drawers**, bounce the **laundry basket**, or click the **floor manga** so Marin sits on the rug to read!
+- **Corner Icons:** Settings (`0–150%` physics, volume, *Always on Top*, **Free Life AI**, **Cozy Rain**, **Real-Time Clock Lighting Sync**, **Mini-Stats**, window scale, Reset Pose, Reset Progress), Wardrobe, Accessories, Lighting, **16-bit Lo-Fi Music**, **Weather (Rain)**, **Rock-Paper-Scissors**, **Chat**, 10 Emotions, and Wave.
 
 ---
 
-## What's New in `v0.4-beta`
+## What's New in `v0.5-beta`
 
-- **Living Room AI Routine ("Свободная жизнь"):** Marin now lives naturally in her room (toggleable in Settings, ON by default) — walking around, sitting on the bed dangling her legs with a glowing smartphone (whose soft cyan Bayer-dithered light illuminates her face at night), crouching to read manga with page-flips, watching drifting clouds & shooting stars at the window, checking her hair by the wardrobe, sipping bubble tea, or napping on the bed in pitch darkness.
-- **"Tease vs Care" Dynamic Reactions & Pillow Counter-Throw:** interrupting her reading/phone or turning off the light while she reads makes her pout; turning the light on for her or bringing bubble tea / a gift to her on the bed earns bonus Affinity & warm lines! Throw the pillow at her twice in a row and she catches it and fires it right back at your cursor.
-- **Canon Top-Button Collar Animation & Visual Fixes:** redesigned 5th outfit (**Canon Relaxed Shirt**) with a clear unbuttoned V-neck, lapels, collarbones & loosened navy tie; at **Affinity Lv.4+ & high Mood** she raises her hand and relaxes her top collar button (and buttons it back if teased too much!). Shrunk earrings to dainty 1–2px silver glints, fixed Windows DPI scaling (zero black strips), removed the stray rug artifact, and aligned the top-right Mood/Affinity HUD cleanly above the fairy lights.
-- **16-bit Graphics, Living Window & Built-in Lo-Fi Player:** replaced flat light circles with **4×4 Bayer-dithered** halos for the fairy lights, desk lamp (with warm floor/wall bounce), and phone screen; added live drifting clouds, twinkling stars & shooting stars behind window mullions; redesigned all 3 wall posters in detailed 16-bit art; and added a click-free **16-bit Lo-Fi chill music loop** toggle.
-- **Indie UX Polish:** crisp **1px hover outlines** on every interactive room object, **custom 16-bit pixel cursors** (`arrow`, `hand_open`, `hand_grab`, `hand_heart`), wrapped speech bubbles, smooth alpha-fading Settings modal, clamped `dt <= 0.05`, and corruption-proof `SaveManager`.
+- **Cuter Face Redesign & Multi-Phase Collar Animation:** softer rounded cheeks and warmer smile, larger rounder anime eyes with **bright double white highlights** across all 10 expressions; expanded the relaxed unbuttoned-collar state to **Outfit 1 (Home White Shirt)** alongside School (0) and Canon Shirt (4), with an expressive 3-phase animation (blush + hands to collar → fabric tug & soft cloth rustle → relaxed stretch/exhale).
+- **Floor-Sitting Manga Reading:** when reading manga, Marin smoothly sits right down on the floor/rug with tucked legs, picks up the book into her hands (`manga_open`), flips pages with rustling SFX, giggles or reacts to plot twists, and puts it back when standing up.
+- **100% Offline Russian/English Chat (`chat_engine.py`):** works offline right inside `PixelRoom.exe` with full Cyrillic input, Quick Reply chips, Affinity-scaled romance & compliments, emotional support, playful banter (even throwing the pillow if teased too much!), player name memory in `save.json`, live room action commands, and Undertale/Stardew-style typewriter speech bubbles with automatic multi-line wrapping.
+- **Cozy Rain Weather & New Living Room AI Routines:** toggleable Cozy Rain (window glass, Rain button, Settings, or Chat) with slanted falling pixel drops, slowly trickling glass beads, and procedural muffled rain audio that mixes cleanly with Lo-Fi. New AI routines include **Lo-Fi 90 BPM dancing** with floating pixel `♪` notes, sweet **rug stretches**, **wardrobe half-turn spins**, **bed naps**, and **high-Affinity waving for attention**.
+- **Polaroid Selfie Frame, Real-Time Sync & Mini-Stats:** taking a selfie with the retro camera slides a tilted 16-bit **Polaroid card** of Marin's exact live portrait into the corner; optional **Real-Time Clock Sync** matches room lighting to your PC's hour; and Settings now displays **Mini-Stats** (headpats, RPS wins, selfies, chat messages) persisted safely in `save.json`.
 
 ---
 

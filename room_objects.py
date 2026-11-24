@@ -34,6 +34,7 @@ class RoomObjects:
         self.fairy_on = save_data["fairy_on"]
         self.curtains_closed = save_data["curtains_closed"]
         self.poster_idx = save_data["poster_idx"]
+        self.weather_rain = bool(save_data.get("weather_rain", False))
 
         self.curtain_prog = 1.0 if self.curtains_closed else 0.0
         self.cur_tint = list(self._target_tint())
@@ -63,6 +64,16 @@ class RoomObjects:
         ]
         self.shooting_star = None
         self.shoot_cd = random.uniform(4.5, 9.5)
+
+        # Cozy Rain entities inside the 108x100 window pane (slanted drops + glass trickles!)
+        self.raindrops = [
+            [rnd.uniform(0, 108), rnd.uniform(0, 100), rnd.uniform(115.0, 175.0), rnd.randint(5, 9)]
+            for _ in range(38)
+        ]
+        self.glass_drops = [
+            [rnd.uniform(4, 104), rnd.uniform(2, 96), rnd.uniform(5.0, 12.0)]
+            for _ in range(11)
+        ]
 
         self.drawer_top = False
         self.drawer_bot = False
@@ -114,7 +125,7 @@ class RoomObjects:
         return LIGHT_TINTS["evening"]
 
     def _target_sun_alpha(self):
-        if self.curtains_closed:
+        if self.curtains_closed or self.weather_rain:
             return 0.0
         if self.light == 0:
             return 42.0
@@ -137,6 +148,7 @@ class RoomObjects:
         self.fairy_on = save_data["fairy_on"]
         self.curtains_closed = save_data["curtains_closed"]
         self.poster_idx = save_data["poster_idx"]
+        self.weather_rain = bool(save_data.get("weather_rain", False))
 
     def reset_props(self):
         self.pillow.update({
@@ -172,8 +184,17 @@ class RoomObjects:
     def camera_item_hit(self, mx, my):
         return self.drawer_bot and abs(mx - self.camera_item["x"]) <= 17 and abs(my - self.camera_item["y"]) <= 13
 
+    def window_glass_hit(self, mx, my):
+        """Open window center glass pane (clickable to toggle Cozy Rain when curtains are open!)."""
+        return (not self.curtains_closed) and 272 <= mx <= 368 and 62 <= my <= 162
+
     def curtains_hit(self, mx, my):
-        return 228 <= mx <= 412 and 50 <= my <= 184
+        if not (228 <= mx <= 412 and 50 <= my <= 184):
+            return False
+        # When curtains are open, center glass toggles rain while left/right curtain panels toggle curtains!
+        if not self.curtains_closed and self.window_glass_hit(mx, my):
+            return False
+        return True
 
     def fairy_hit(self, mx, my):
         return FAIRY_POS[0] <= mx <= FAIRY_POS[0] + 240 and FAIRY_POS[1] <= my <= FAIRY_POS[1] + 38
@@ -196,6 +217,8 @@ class RoomObjects:
             return "fairy"
         if self.curtains_hit(mx, my):
             return "curtains"
+        if self.window_glass_hit(mx, my):
+            return "window"
         if 176 <= mx < 224 and 72 <= my < 138:
             return "poster"
         if 580 <= mx < 634 and 144 <= my < 192:
@@ -234,13 +257,27 @@ class RoomObjects:
         for i in range(4):
             self.sky_w[i] += ((1.0 if i == self.light else 0.0) - self.sky_w[i]) * lerp_f
 
-        # Living Window: clouds & shooting stars
+        # Living Window: clouds, shooting stars & cozy rain drops
         for cl in self.clouds:
             cl["x"] += cl["spd"] * dt
             if cl["x"] > 112.0:
                 cl["x"] = -cl["w"] - 4.0
 
-        if self.sky_w[2] > 0.25 or self.sky_w[3] > 0.35:
+        if self.weather_rain:
+            for rd in self.raindrops:
+                rd[0] -= rd[2] * 0.24 * dt
+                rd[1] += rd[2] * dt
+                if rd[1] > 104.0 or rd[0] < -4.0:
+                    rd[0] = random.uniform(4.0, 118.0)
+                    rd[1] = random.uniform(-12.0, -2.0)
+            for gd in self.glass_drops:
+                gd[1] += gd[2] * dt
+                if gd[1] > 100.0:
+                    gd[0] = random.uniform(4.0, 104.0)
+                    gd[1] = random.uniform(0.0, 14.0)
+                    gd[2] = random.uniform(5.0, 12.0)
+
+        if (self.sky_w[2] > 0.25 or self.sky_w[3] > 0.35) and not self.weather_rain:
             if self.shooting_star is not None:
                 ss = self.shooting_star
                 ss[0] += ss[2] * dt
@@ -421,9 +458,9 @@ class RoomObjects:
                 pygame.draw.rect(cl_layer, c_top, (cx + 6, cy - 3, max(6, cw - 12), 4))
             ws.blit(cl_layer, (0, 0))
 
-        # 3. Live twinkling stars & shooting star (Night / Romantic)
+        # 3. Live twinkling stars & shooting star (Night / Romantic, clear weather)
         star_w = clamp(self.sky_w[2] + self.sky_w[3] * 0.72, 0.0, 1.0)
-        if star_w > 0.05:
+        if star_w > 0.05 and not self.weather_rain:
             st_layer = pygame.Surface((108, 100), pygame.SRCALPHA)
             for sx, sy, ph, freq, col in self.stars:
                 tw = 0.35 + 0.65 * (0.5 + 0.5 * math.sin(self.t * freq + ph))
@@ -439,13 +476,33 @@ class RoomObjects:
                 st_layer.fill((255, 255, 255, int(255 * frac)), (int(sx), int(sy), 2, 2))
             ws.blit(st_layer, (0, 0))
 
+        # 3b. Cozy Rain: overcast misty veil + slanted pixel raindrops + slow trickling glass beads!
+        if self.weather_rain:
+            rain_layer = pygame.Surface((108, 100), pygame.SRCALPHA)
+            rain_layer.fill((46, 62, 92, 95))
+            drop_col = (196, 226, 255, 195) if self.sky_w[2] > 0.4 else (228, 242, 255, 215)
+            for rx, ry, spd, ln in self.raindrops:
+                x0, y0 = int(rx), int(ry)
+                pygame.draw.line(rain_layer, drop_col, (x0, y0), (x0 - max(1, ln // 4), y0 + ln), 1)
+            for gx, gy, _ in self.glass_drops:
+                x0, y0 = int(gx), int(gy)
+                rain_layer.fill((220, 242, 255, 165), (x0, y0, 2, 3))
+                rain_layer.fill((255, 255, 255, 225), (x0, y0 + 2, 1, 1))
+                rain_layer.fill((180, 214, 245, 75), (x0, max(0, y0 - 5), 1, 5))
+            ws.blit(rain_layer, (0, 0))
+
         # 4. Crisp window mullions ABOVE live sky elements
         ws.blit(assets["window_frame"], (0, 0))
         canvas.blit(ws, (266, 62))
 
-    def draw_background(self, canvas, assets, hover_obj=None):
+    def draw_background(self, canvas, assets, hover_obj=None, manga_picked_up=False):
         ward_open = 0.08 < self.ward_t < 0.78
         base = assets["room_base_open" if ward_open else "room_base"].copy()
+        if manga_picked_up:
+            # Cleanly patch over the floor manga spot while Marin is holding the open manga!
+            pygame.draw.rect(base, (150, 96, 62), (214, 272, 32, 16))
+            pygame.draw.line(base, (110, 68, 44), (214, 282), (246, 282), 1)
+            pygame.draw.line(base, (178, 120, 80), (214, 283), (246, 283), 1)
         tint = (int(self.cur_tint[0]), int(self.cur_tint[1]), int(self.cur_tint[2]))
         base.fill(tint, special_flags=pygame.BLEND_RGB_MULT)
         canvas.blit(base, (0, 0))
@@ -527,6 +584,8 @@ class RoomObjects:
         if hover_obj == "curtains":
             pygame.draw.rect(canvas, HOVER_COL, (233, 51, cw + 2, 134), 1)
             pygame.draw.rect(canvas, HOVER_COL, (405 - cw, 51, cw + 2, 134), 1)
+        elif hover_obj == "window":
+            pygame.draw.rect(canvas, HOVER_COL, (265, 61, 110, 102), 1)
         elif hover_obj == "fairy":
             pygame.draw.rect(canvas, HOVER_COL, (FAIRY_POS[0], FAIRY_POS[1], 240, 36), 1)
         elif hover_obj == "poster":

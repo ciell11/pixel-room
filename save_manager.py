@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""SaveManager: bulletproof JSON persistence with corruption recovery & v0.2/v0.3 compatibility."""
+"""SaveManager: bulletproof JSON persistence with corruption recovery, stats, chat memory & backward compatibility."""
 import os
 import json
 from constants import app_dir, clamp, OUTFIT_COUNT, ACC_COUNT
@@ -16,6 +16,8 @@ DEFAULT_SAVE = {
     "fairy_on": True,
     "curtains_closed": False,
     "poster_idx": 0,
+    "weather_rain": False,
+    "real_time_sync": False,
     "free_life": True,
     "music_on": False,
     "physics": 1.0,
@@ -23,6 +25,10 @@ DEFAULT_SAVE = {
     "topmost": False,
     "scale": 0,
     "rps_wins": 0,
+    "player_name": "",
+    "stat_pets": 0,
+    "stat_selfies": 0,
+    "stat_chats": 0,
 }
 
 
@@ -58,7 +64,7 @@ class SaveManager:
     def _safe_float(val, default):
         try:
             v = float(val)
-            return default if (v != v) else v  # guard NaN
+            return default if (v != v) else v
         except Exception:
             return default
 
@@ -73,7 +79,6 @@ class SaveManager:
                         if k in loaded:
                             self.data[k] = loaded[k]
         except Exception:
-            # Corrupted JSON -> fall back cleanly to defaults without crashing!
             self.data = dict(DEFAULT_SAVE)
         self._sanitize()
         return self.data
@@ -90,6 +95,8 @@ class SaveManager:
         d["fairy_on"] = bool(d.get("fairy_on", True))
         d["curtains_closed"] = bool(d.get("curtains_closed", False))
         d["poster_idx"] = self._safe_int(d.get("poster_idx"), 0) % 3
+        d["weather_rain"] = bool(d.get("weather_rain", False))
+        d["real_time_sync"] = bool(d.get("real_time_sync", False))
         d["free_life"] = bool(d.get("free_life", True))
         d["music_on"] = bool(d.get("music_on", False))
         d["physics"] = round(float(clamp(self._safe_float(d.get("physics"), 1.0), 0.0, 1.5)), 2)
@@ -97,6 +104,11 @@ class SaveManager:
         d["topmost"] = bool(d.get("topmost", False))
         d["scale"] = max(0, self._safe_int(d.get("scale"), 0))
         d["rps_wins"] = max(0, self._safe_int(d.get("rps_wins"), 0))
+        pn = d.get("player_name", "")
+        d["player_name"] = str(pn).strip()[:20] if isinstance(pn, str) else ""
+        d["stat_pets"] = max(0, self._safe_int(d.get("stat_pets"), 0))
+        d["stat_selfies"] = max(0, self._safe_int(d.get("stat_selfies"), 0))
+        d["stat_chats"] = max(0, self._safe_int(d.get("stat_chats"), 0))
 
     def save(self):
         self._sanitize()

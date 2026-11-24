@@ -50,6 +50,18 @@ class ParticleSystem:
                     "life": 1.65,
                     "max_life": 1.65,
                 })
+            elif kind == "note":
+                # Floating pixel music note while dancing to Lo-Fi!
+                self.items.append({
+                    "k": "note",
+                    "x": x + random.uniform(-16, 16),
+                    "y": y + random.uniform(-4, 4),
+                    "vx": random.uniform(-18, 18),
+                    "vy": random.uniform(-42, -26),
+                    "grav": -4.0,
+                    "life": random.uniform(1.1, 1.6),
+                    "max_life": 1.6,
+                })
             elif kind == "star":
                 self.items.append({
                     "k": "star",
