@@ -62,11 +62,83 @@ def mix_pcm(*parts):
     return out
 
 
+def build_lofi_loop():
+    """Generate a seamless, click-free 16-bit chill lo-fi accompaniment loop (~5.33s, 90 BPM)."""
+    bpm = 90.0
+    beat_sec = 60.0 / bpm
+    total_beats = 8
+    n = int(SR * beat_sec * total_beats)
+    buf = [0.0] * n
+    two_pi = 6.2831853
+
+    # Warm mellow electric-piano chord progression: Fmaj7 -> Em7 -> Dm7 -> Cmaj7
+    chords = [
+        (174.61, 220.00, 261.63, 329.63),
+        (164.81, 196.00, 246.94, 293.66),
+        (146.83, 174.61, 220.00, 261.63),
+        (130.81, 164.81, 196.00, 246.94),
+    ]
+    clen = n // 4
+    for ci, notes in enumerate(chords):
+        s0 = ci * clen
+        for i in range(clen):
+            t = i / SR
+            p = i / clen
+            # Smooth fade-in & fade-out per chord guarantees zero clicks
+            env = min(1.0, t / 0.05) * min(1.0, (1.0 - p) * 16.0) * ((1.0 - p * 0.68) ** 1.25)
+            v = 0.0
+            for f in notes:
+                wob = 1.0 + 0.0018 * math.sin(two_pi * 2.0 * t)
+                v += math.sin(two_pi * f * wob * t) * 0.22
+                v += math.sin(two_pi * f * 2.0 * wob * t) * 0.025
+            buf[s0 + i] += v * env * 0.30
+
+    # Soft muffled kick & gentle brushed snare
+    bsamp = int(SR * beat_sec)
+    rnd = random.Random(108)
+    for b in (0.0, 2.0, 3.5, 4.0, 6.0):
+        s0 = int(b * bsamp)
+        klen = int(SR * 0.14)
+        for i in range(klen):
+            idx = (s0 + i) % n
+            t = i / SR
+            p = i / klen
+            f = 105.0 * ((1.0 - p) ** 2.2) + 42.0
+            env = min(1.0, t / 0.006) * ((1.0 - p) ** 2.0)
+            buf[idx] += math.sin(two_pi * f * t) * env * 0.34
+    for b in (1.0, 3.0, 5.0, 7.0):
+        s0 = int(b * bsamp)
+        slen = int(SR * 0.085)
+        lp = 0.0
+        for i in range(slen):
+            idx = (s0 + i) % n
+            p = i / slen
+            lp += (rnd.uniform(-1.0, 1.0) - lp) * 0.22
+            env = min(1.0, p * 16.0) * ((1.0 - p) ** 2.3)
+            buf[idx] += lp * env * 0.16
+
+    # Gentle low-pass + crossfade seam (first/last 400 samples) for a 100% click-free loop!
+    lp = 0.0
+    for i in range(n):
+        lp += (buf[i] - lp) * 0.28
+        buf[i] = math.tanh(lp * 1.2)
+    seam = 400
+    for i in range(seam):
+        w = i / float(seam)
+        buf[i] = buf[i] * w + buf[n - seam + i] * (1.0 - w)
+
+    out = array.array("h", [int(clamp(x, -0.92, 0.92) * 30000) for x in buf])
+    return pygame.mixer.Sound(buffer=out.tobytes())
+
+
 class AudioEngine:
     def __init__(self, initial_volume=0.6):
         self.ok = pygame.mixer.get_init() is not None
         self.sounds = {}
         self.blips = []
+        self.lofi = None
+        self.lofi_ch = None
+        self.vol = initial_volume
         if not self.ok:
             return
 
@@ -141,6 +213,27 @@ class AudioEngine:
             synth_tone(349, 311, 0.14, "tri", 0.24, attack=0.008),
         ))
 
+        # v0.3-beta Romantic & Cozy SFX: fairy lights twinkle, gift unwrap, Affinity level-up chord!
+        self.sounds["fairy"] = mk(concat_pcm(
+            synth_tone(1318, 1397, 0.045, "sine", 0.18, attack=0.008, lp_alpha=0.5),
+            synth_tone(1760, 1975, 0.09, "sine", 0.18, attack=0.008, lp_alpha=0.5),
+        ))
+        self.sounds["gift"] = mk(concat_pcm(
+            synth_tone(659, 784, 0.055, "tri", 0.24, attack=0.006, lp_alpha=0.5),
+            synth_tone(987, 1175, 0.06, "sine", 0.24, attack=0.006, lp_alpha=0.5),
+            synth_tone(1318, 1568, 0.12, "sine", 0.26, attack=0.008, lp_alpha=0.5),
+        ))
+        self.sounds["level_up"] = mk(mix_pcm(
+            concat_pcm(
+                synth_tone(523, 523, 0.07, "sine", 0.22, attack=0.01),
+                synth_tone(659, 659, 0.07, "sine", 0.22, attack=0.01),
+                synth_tone(784, 784, 0.07, "sine", 0.22, attack=0.01),
+                synth_tone(987, 987, 0.08, "sine", 0.22, attack=0.01),
+                synth_tone(1175, 1175, 0.24, "sine", 0.24, attack=0.015),
+            ),
+            synth_tone(261.6, 261.6, 0.48, "sine", 0.16, attack=0.03, lp_alpha=0.35),
+        ))
+
         # Soft voice blips for speech bubble typewriter
         self.blips = [
             mk(synth_tone(f, f * 1.06, 0.035, "tri", 0.11, attack=0.004, lp_alpha=0.4))
@@ -150,8 +243,24 @@ class AudioEngine:
 
     def set_volume(self, v):
         vol = clamp(float(v), 0.0, 1.0)
+        self.vol = vol
         for snd in list(self.sounds.values()) + self.blips:
             snd.set_volume(vol)
+        if self.lofi:
+            self.lofi.set_volume(vol * 0.50)
+
+    def set_music(self, enabled):
+        if not self.ok:
+            return
+        if enabled:
+            if self.lofi is None:
+                self.lofi = build_lofi_loop()
+            self.lofi.set_volume(self.vol * 0.50)
+            if self.lofi_ch is None or not self.lofi_ch.get_busy():
+                self.lofi_ch = self.lofi.play(loops=-1)
+        elif self.lofi_ch:
+            self.lofi_ch.stop()
+            self.lofi_ch = None
 
     def play(self, name):
         if self.ok and name in self.sounds:

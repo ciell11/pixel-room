@@ -1,4 +1,4 @@
-"""Build PixelRoom.exe v0.2-beta (single file, windowed, modular sources + assets bundled).
+"""Build PixelRoom.exe v0.4-beta (single file, windowed, modular sources + assets bundled).
 Run: py build.py
 """
 import os
@@ -15,7 +15,7 @@ import generate_assets
 from constants import PINK, WHITE
 from ui_manager import pattern_surface, HEART_P
 
-# Ensure all v0.2-beta high-bit PNG assets are fresh
+# Ensure all v0.4-beta high-bit PNG assets are fresh
 generate_assets.generate_all()
 
 # Make icon.ico (PNG-in-ICO) from the pixel heart
@@ -42,4 +42,4 @@ subprocess.check_call([
     "--exclude-module", "tkinter",
     "pixelroom.py",
 ], cwd=here)
-print("Built v0.2-beta:", os.path.join(here, "dist", "PixelRoom.exe"))
+print("Built v0.4-beta:", os.path.join(here, "dist", "PixelRoom.exe"))

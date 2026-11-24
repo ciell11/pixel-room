@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
-"""CharacterPhysics: Clamped Spring-Damper physics, pivot rotation, squash-stretch, and lively idle."""
+"""CharacterPhysics: Clamped Spring-Damper physics, Living Room AI routine, sitting/phone/collar animations."""
 import math
 import random
 import pygame
-from constants import CW, CH, OX, OY, PAD, COMP_W, COMP_H, COX, COY, VW, FLOOR_Y, PIVOTS, clamp
+from constants import (
+    CW, CH, OX, OY, PAD, COMP_W, COMP_H, COX, COY,
+    VW, FLOOR_Y, BED_SIT_POS, PIVOTS, clamp
+)
 
 MAX_SPRING_VEL = 520.0
 MAX_BODY_VEL = 1100.0
@@ -23,7 +26,6 @@ class Spring2D:
         self.override_stretch = 0.0
 
     def update(self, dt, ax, ay, inten):
-        # Hard-clamp incoming accelerations so sharp mouse flicks stay stable
         ax = clamp(ax, -32000.0, 32000.0)
         ay = clamp(ay, -32000.0, 32000.0)
         if self.pulled:
@@ -111,7 +113,7 @@ def blit_pivoted(dest, surf, pivot, dest_pivot, angle=0.0, sx=1.0, sy=1.0):
 
 
 class CharacterPhysics:
-    """Owns Marin's position, clamped springs, lively idle animations, and layered compositing."""
+    """Owns Marin's position, clamped springs, Living Room AI state machine, and layered compositing."""
 
     def __init__(self):
         self.rx, self.ry = 320.0, float(FLOOR_Y)
@@ -134,7 +136,7 @@ class CharacterPhysics:
         }
         self.land_sq = Spring1D(k=260.0, c=11.0)
 
-        # Lively Idle state
+        # Lively Idle & Pose timers
         self.t = 0.0
         self.breath_y = 0.0
         self.weight_shift_x = 0.0
@@ -146,6 +148,19 @@ class CharacterPhysics:
         self.blink_t, self.blinking = random.uniform(2.2, 4.8), 0.0
         self.pup = [0.0, 0.0]
         self.wave_t = 0.0
+        self.collar_anim_t = 0.0
+
+        # Living Room AI State Machine
+        # States: "stand" | "walk" | "bed_phone" | "bed_nap" | "read_manga" | "watch_window" | "wardrobe_check" | "self_boba"
+        self.ai_state = "stand"
+        self.ai_next_state = "stand"
+        self.ai_target_x = 320.0
+        self.ai_timer = random.uniform(7.0, 12.0)
+        self.ai_action_cd = 3.0
+        self.sitting = False
+        self.walk_phase = 0.0
+        self.walk_bob = 0.0
+        self.crouch_y = 0.0
 
         self.comp = pygame.Surface((COMP_W, COMP_H), pygame.SRCALPHA)
         self.head_comp = pygame.Surface((CW, CH), pygame.SRCALPHA)
@@ -156,12 +171,54 @@ class CharacterPhysics:
         self.vx = self.vy = self.pvx = self.pvy = 0.0
         self.air = False
         self.wave_t = 0.0
+        self.collar_anim_t = 0.0
         self.weight_shift_x = 0.0
         self.shift_target = 0.0
         self.idle_look_t = 0.0
+        self.ai_state = "stand"
+        self.ai_next_state = "stand"
+        self.ai_target_x = 320.0
+        self.ai_timer = random.uniform(7.0, 12.0)
+        self.sitting = False
+        self.walk_phase = 0.0
+        self.walk_bob = 0.0
+        self.crouch_y = 0.0
         for s in self.sp.values():
             s.reset()
         self.land_sq.reset()
+
+    def sit_on_bed(self, nap=False):
+        """Seat Marin neatly on the edge of the bed dangling her legs."""
+        self.rx, self.ry = BED_SIT_POS[0], BED_SIT_POS[1]
+        self.vx = self.vy = 0.0
+        self.air = False
+        self.sitting = True
+        self.walk_bob = 0.0
+        self.ai_state = "bed_nap" if nap else "bed_phone"
+        self.ai_timer = random.uniform(14.0, 22.0)
+        self.ai_action_cd = random.uniform(4.5, 8.0)
+        self.land_sq.kick(-0.75)
+
+    def stand_up(self, target_state="stand"):
+        """Return Marin from sitting/activity to standing on the floor."""
+        prev = self.ai_state
+        if self.sitting:
+            self.sitting = False
+            self.ry = float(FLOOR_Y)
+            self.land_sq.kick(-0.65)
+        self.ai_state = target_state
+        self.ai_timer = random.uniform(7.0, 12.0)
+        self.walk_bob = 0.0
+        return prev
+
+    def interrupt_for_drag(self):
+        """Interrupt any AI routine when the player picks Marin up."""
+        prev = self.ai_state
+        self.sitting = False
+        self.ai_state = "stand"
+        self.ai_timer = random.uniform(8.0, 14.0)
+        self.walk_bob = 0.0
+        return prev
 
     def kick_all(self, dx, strength, physics_inten):
         k = clamp(physics_inten * strength, 0.0, 2.2)
@@ -179,7 +236,7 @@ class CharacterPhysics:
     def hit_zone(self, mx, my, outfit):
         lx, ly = int(mx - self.rx + COX), int(my - self.ry + COY)
         if 0 <= lx < COMP_W and 0 <= ly < COMP_H and self.mask.get_at((lx, ly)):
-            hy = self.sp["head"].y
+            hy = self.sp["head"].y + self.crouch_y
             rel_y = my - self.ry - hy
             rel_x = mx - self.rx
             if rel_y < -144:
@@ -193,7 +250,7 @@ class CharacterPhysics:
                     return "armL"
                 if rel_x >= 16:
                     return "armR"
-            if outfit == 0 and abs(rel_x) <= 6 and -128 < rel_y < -92:
+            if outfit in (0, 4) and abs(rel_x) <= 6 and -128 < rel_y < -92:
                 return "tie"
             if -144 <= rel_y < -98:
                 if rel_x < -12:
@@ -207,24 +264,69 @@ class CharacterPhysics:
 
     def head_rmb_hit(self, mx, my):
         hx = self.rx + self.sp["head"].x
-        hy = self.ry - 166 + self.sp["head"].y
+        hy = self.ry - 166 + self.sp["head"].y + self.crouch_y
         return abs(mx - hx) <= 28 and abs(my - hy) <= 32
 
-    def update(self, dt, mouse, dragging, grab_offset, physics_inten, pitch_dark, interacting):
-        """Advance body kinematics, clamped springs, breathing, weight-shift, and idle micro-actions.
-        Returns (landed_impact, bounced_floor) for SFX/particles/reactions.
+    def _pick_next_ai(self, pitch_dark, boba_busy):
+        """Choose the next autonomous Living Room activity."""
+        if pitch_dark:
+            if self.ai_state == "bed_nap":
+                self.ai_timer = random.uniform(12.0, 20.0)
+                return
+            self._start_walk(BED_SIT_POS[0], "bed_nap")
+            return
+
+        # Weighted cozy activities (avoid repeating the same spot twice in a row)
+        choices = [
+            ("bed_phone", BED_SIT_POS[0], 26),
+            ("read_manga", 238.0, 22),
+            ("watch_window", 320.0, 20),
+            ("wardrobe_check", 156.0, 14),
+            ("stand", random.uniform(264.0, 382.0), 12),
+        ]
+        if not boba_busy:
+            choices.append(("self_boba", 530.0, 12))
+        choices = [c for c in choices if c[0] != self.ai_state]
+        total = sum(w for _, _, w in choices)
+        r = random.uniform(0, total)
+        acc = 0.0
+        picked_state, picked_x = "stand", 320.0
+        for st, tx, w in choices:
+            acc += w
+            if r <= acc:
+                picked_state, picked_x = st, tx
+                break
+        self._start_walk(picked_x, picked_state)
+
+    def _start_walk(self, target_x, next_state):
+        if self.sitting:
+            self.sitting = False
+            self.ry = float(FLOOR_Y)
+            self.land_sq.kick(-0.55)
+        self.ai_state = "walk"
+        self.ai_target_x = clamp(target_x, 96.0, VW - 96.0)
+        self.ai_next_state = next_state
+        self.ai_timer = random.uniform(10.0, 18.0)
+
+    def update(self, dt, mouse, dragging, grab_offset, physics_inten, pitch_dark,
+               interacting, aff_lvl=1, free_life=True, boba_busy=False):
+        """Advance kinematics, clamped springs, Living Room AI, breathing & gaze.
+        Returns (landed_impact, idle_event).
         """
+        dt = min(dt, 0.05)
         self.t += dt
         mx, my = mouse
         ox, oy = self.rx, self.ry
         landed_impact = 0.0
+        idle_event = None
 
         if dragging:
             nx = clamp(mx + grab_offset[0], 42, VW - 42)
             ny = clamp(my + grab_offset[1], 202, FLOOR_Y)
             self.rx, self.ry = nx, ny
-            self.vx = clamp(self.vx + ((nx - ox) / dt - self.vx) * 0.55, -MAX_BODY_VEL, MAX_BODY_VEL)
-            self.vy = clamp(self.vy + ((ny - oy) / dt - self.vy) * 0.55, -MAX_BODY_VEL, MAX_BODY_VEL)
+            self.vx = clamp(self.vx + ((nx - ox) / max(dt, 1e-4) - self.vx) * 0.55, -MAX_BODY_VEL, MAX_BODY_VEL)
+            self.vy = clamp(self.vy + ((ny - oy) / max(dt, 1e-4) - self.vy) * 0.55, -MAX_BODY_VEL, MAX_BODY_VEL)
+            self.walk_bob = 0.0
         elif self.air:
             self.vy = clamp(self.vy + 1550.0 * dt, -MAX_BODY_VEL, MAX_BODY_VEL)
             self.rx += self.vx * dt
@@ -246,56 +348,151 @@ class CharacterPhysics:
                 else:
                     self.vy, self.air = 0.0, False
                 self.vx *= 0.60
+            self.walk_bob = 0.0
         else:
-            self.vx *= math.exp(-8.5 * dt)
-            self.rx = clamp(self.rx + self.vx * dt, 42, VW - 42)
+            # Grounded or sitting on bed
+            if self.sitting:
+                self.rx += (BED_SIT_POS[0] - self.rx) * min(1.0, dt * 10.0)
+                self.ry += (BED_SIT_POS[1] - self.ry) * min(1.0, dt * 10.0)
+                self.vx = self.vy = 0.0
+            else:
+                self.vx *= math.exp(-8.5 * dt)
+                self.rx = clamp(self.rx + self.vx * dt, 42, VW - 42)
+
+            # ---- Living Room AI State Machine ----
+            if not free_life:
+                if self.ai_state == "walk":
+                    self.ai_state = "stand"
+                elif self.ai_state in ("read_manga", "watch_window", "wardrobe_check", "self_boba"):
+                    self.ai_state = "stand"
+                self.walk_bob += (0.0 - self.walk_bob) * min(1.0, dt * 10.0)
+            elif not interacting and abs(self.vx) < 18.0:
+                if self.ai_state == "walk":
+                    diff = self.ai_target_x - self.rx
+                    if abs(diff) <= 2.5:
+                        self.rx = self.ai_target_x
+                        self.walk_bob = 0.0
+                        nxt = self.ai_next_state
+                        if nxt in ("bed_phone", "bed_nap"):
+                            self.sit_on_bed(nap=(nxt == "bed_nap"))
+                        else:
+                            self.ai_state = nxt
+                            self.ai_timer = random.uniform(9.0, 15.0)
+                            self.ai_action_cd = random.uniform(2.5, 5.0)
+                        idle_event = f"ai_enter_{self.ai_state}"
+                    else:
+                        step = math.copysign(min(abs(diff), 52.0 * dt), diff)
+                        self.rx = clamp(self.rx + step, 42, VW - 42)
+                        self.walk_phase += dt * 7.8
+                        self.walk_bob = -abs(math.sin(self.walk_phase)) * 2.8
+                        sway = math.sin(self.walk_phase)
+                        self.sp["skirt"].kick(sway * 28.0 * dt * 15, 0, physics_inten * 0.25)
+                        self.sp["armL"].kick(sway * 24.0 * dt * 15, 0, physics_inten * 0.22)
+                        self.sp["armR"].kick(-sway * 24.0 * dt * 15, 0, physics_inten * 0.22)
+                        self.idle_look_t = 0.2
+                        self.idle_look_vec = (1.6 if diff > 0 else -1.6, 0.0)
+                else:
+                    self.walk_bob += (0.0 - self.walk_bob) * min(1.0, dt * 10.0)
+                    # If room suddenly went pitch dark, head to bed for a nap!
+                    if pitch_dark and self.ai_state != "bed_nap":
+                        self.ai_timer = min(self.ai_timer, 2.2)
+                    elif not pitch_dark and self.ai_state == "bed_nap":
+                        self.ai_state = "bed_phone"
+                        self.ai_timer = random.uniform(8.0, 14.0)
+
+                    self.ai_timer -= dt
+                    if self.ai_timer <= 0:
+                        self._pick_next_ai(pitch_dark, boba_busy)
+                    else:
+                        # Periodic activity micro-actions
+                        self.ai_action_cd -= dt
+                        if self.ai_action_cd <= 0:
+                            self.ai_action_cd = random.uniform(4.2, 7.5)
+                            if self.ai_state == "read_manga":
+                                self.sp["head"].kick(random.choice((-22, 22)), 14, physics_inten * 0.5)
+                                idle_event = "ai_manga_flip"
+                            elif self.ai_state == "bed_phone":
+                                self.sp["head"].kick(random.choice((-18, 18)), 10, physics_inten * 0.4)
+                                idle_event = "ai_phone_chuckle"
+                            elif self.ai_state == "wardrobe_check":
+                                side = random.choice(("L", "R"))
+                                sgn = -1 if side == "L" else 1
+                                self.sp[f"hair{side}"].kick(sgn * 70, -35, max(0.5, physics_inten))
+                                self.sp["head"].kick(-sgn * 25, 6, max(0.5, physics_inten))
+                            elif self.ai_state == "watch_window":
+                                self.idle_look_t = 2.0
+                                self.idle_look_vec = (random.uniform(-1.0, 1.0), -1.1)
+            else:
+                self.walk_bob += (0.0 - self.walk_bob) * min(1.0, dt * 10.0)
+
+        # Smooth crouch offset when reading manga on the floor
+        target_crouch = 11.0 if (self.ai_state == "read_manga" and not dragging and not self.air) else 0.0
+        self.crouch_y += (target_crouch - self.crouch_y) * min(1.0, dt * 7.5)
 
         # Lively Idle: breathing, weight-shift, glancing around, brushing a hair strand!
         on_ground = not self.air and not dragging
         if on_ground and not interacting:
-            # 1. Breathing cycle (shoulders, torso & hair)
-            freq = 1.65 if pitch_dark else 2.35
+            freq = 1.65 if (pitch_dark or self.ai_state == "bed_nap") else 2.35
             target_b = math.sin(self.t * freq) * 1.65
             self.breath_y += (target_b - self.breath_y) * min(1.0, dt * 8.0)
 
-            # 2. Rare natural weight-shift from foot to foot
-            self.shift_timer -= dt
-            if self.shift_timer <= 0:
-                self.shift_timer = random.uniform(7.5, 13.0)
-                self.shift_target = random.choice((-2.2, 0.0, 2.2))
-                self.sp["skirt"].kick(self.shift_target * 16, 0, physics_inten * 0.4)
+            if self.ai_state == "stand":
+                self.shift_timer -= dt
+                if self.shift_timer <= 0:
+                    self.shift_timer = random.uniform(7.5, 13.0)
+                    self.shift_target = random.choice((-2.2, 0.0, 2.2))
+                    self.sp["skirt"].kick(self.shift_target * 16, 0, physics_inten * 0.4)
+            else:
+                self.shift_target = 0.0
             self.weight_shift_x += (self.shift_target - self.weight_shift_x) * min(1.0, dt * 2.2)
 
-            # 3. Random idle micro-reactions (look around / brush a front hair lock!)
-            if not pitch_dark:
+            if not pitch_dark and self.ai_state in ("stand", "watch_window"):
                 self.micro_timer -= dt
                 if self.micro_timer <= 0:
-                    self.micro_timer = random.uniform(6.5, 11.5)
-                    if random.random() < 0.55:
-                        # Glance curiously to the side or window
+                    self.micro_timer = random.uniform(6.0, 10.5)
+                    roll = random.random()
+                    if aff_lvl >= 4 and roll < 0.24 and self.ai_state == "stand":
+                        self.wave_t = 1.25
+                        self.sp["head"].kick(30, -10, max(0.6, physics_inten))
+                        idle_event = idle_event or "blown_kiss"
+                    elif roll < 0.62:
+                        side = random.choice(("L", "R"))
+                        sgn = -1 if side == "L" else 1
+                        self.sp[f"hair{side}"].kick(sgn * 80, -40, max(0.6, physics_inten))
+                        self.sp[f"arm{side}"].kick(sgn * 70, -65, max(0.6, physics_inten))
+                        self.sp["head"].kick(-sgn * 28, 8, max(0.6, physics_inten))
+                        if aff_lvl >= 3:
+                            idle_event = idle_event or "hair_tuck"
+                    else:
                         self.idle_look_t = random.uniform(1.2, 2.0)
                         self.idle_look_vec = (random.choice((-1.8, 1.8)), random.uniform(-0.8, 0.4))
                         self.sp["head"].kick(self.idle_look_vec[0] * 18, -6, physics_inten * 0.5)
-                    else:
-                        # Subtly brush/tuck a front hair strand!
-                        side = random.choice(("L", "R"))
-                        sgn = -1 if side == "L" else 1
-                        self.sp[f"hair{side}"].kick(sgn * 75, -35, max(0.6, physics_inten))
-                        self.sp[f"arm{side}"].kick(sgn * 55, -45, max(0.6, physics_inten))
-                        self.sp["head"].kick(-sgn * 25, 8, max(0.6, physics_inten))
-            else:
-                # Drowsy head nod in pitch-dark room
+            elif pitch_dark or self.ai_state == "bed_nap":
                 nod = math.sin(self.t * 1.4)
                 self.sp["head"].y += (3.5 + nod * 2.4 - self.sp["head"].y) * min(1.0, dt * 3.0)
+            elif self.ai_state == "bed_phone":
+                # Slight cozy downward head tilt toward glowing phone screen
+                self.sp["head"].y += (2.0 - self.sp["head"].y) * min(1.0, dt * 3.5)
+            elif self.ai_state == "read_manga":
+                self.sp["head"].y += (2.8 - self.sp["head"].y) * min(1.0, dt * 4.0)
+
+            # Soft gaze attraction when cursor hovers near face/shoulder
+            dx_c = mx - self.rx
+            dy_c = my - (self.ry - 154 + self.crouch_y)
+            if not pitch_dark and self.ai_state != "bed_nap" and abs(dx_c) < 62 and abs(dy_c) < 48:
+                self.idle_look_t = 0.0
+                target_hx = clamp(dx_c * 0.055, -3.2, 3.2)
+                self.sp["head"].x += (target_hx - self.sp["head"].x) * min(1.0, dt * 3.2)
         else:
             self.breath_y += (0.0 - self.breath_y) * min(1.0, dt * 10.0)
             self.weight_shift_x += (0.0 - self.weight_shift_x) * min(1.0, dt * 6.0)
 
         # Root acceleration -> clamped spring sub-steps
-        cvx = (self.rx - ox) / dt
-        cvy = (self.ry - oy) / dt
-        ax = clamp((cvx - self.pvx) / dt, -35000.0, 35000.0)
-        ay = clamp((cvy - self.pvy) / dt, -35000.0, 35000.0)
+        inv_dt = 1.0 / max(dt, 1e-4)
+        cvx = (self.rx - ox) * inv_dt
+        cvy = (self.ry - oy) * inv_dt
+        ax = clamp((cvx - self.pvx) * inv_dt, -35000.0, 35000.0)
+        ay = clamp((cvy - self.pvy) * inv_dt, -35000.0, 35000.0)
         self.pvx, self.pvy = cvx, cvy
 
         for _ in range(3):
@@ -311,24 +508,37 @@ class CharacterPhysics:
             self.blink_t = random.uniform(2.0, 4.9)
         self.blinking = max(0.0, self.blinking - dt)
 
-        # Smooth pupil tracking (cursor OR idle glance!)
-        if self.idle_look_t > 0 and not interacting:
+        # Smooth pupil tracking (activity gaze OR cursor!)
+        if self.ai_state == "bed_phone" and not interacting and math.hypot(mx - self.rx, my - (self.ry - 150)) > 75:
+            tx, ty = 0.7, 1.15
+        elif self.ai_state == "read_manga" and not interacting and math.hypot(mx - self.rx, my - (self.ry - 150)) > 75:
+            tx, ty = -0.5, 1.2
+        elif self.ai_state == "watch_window" and not interacting and math.hypot(mx - self.rx, my - (self.ry - 150)) > 85:
+            tx, ty = 0.0, -1.0
+        elif self.idle_look_t > 0 and not interacting:
             self.idle_look_t -= dt
             tx, ty = self.idle_look_vec
         else:
             tx = clamp((mx - self.rx) / 65.0, -2.0, 2.0)
-            ty = clamp((my - (self.ry - 161)) / 85.0, -1.2, 1.2)
+            ty = clamp((my - (self.ry - 161 + self.crouch_y)) / 85.0, -1.2, 1.2)
         self.pup[0] += (tx - self.pup[0]) * min(1.0, dt * 11.0)
         self.pup[1] += (ty - self.pup[1]) * min(1.0, dt * 11.0)
-        self.wave_t = max(0.0, self.wave_t - dt)
-        return landed_impact
 
-    def compose(self, assets, outfit, accessory, emotion, dragging, grab_part):
-        """Composite all character layers (4 outfits + 2 accessories + 8 emotions) with pivots."""
+        self.wave_t = max(0.0, self.wave_t - dt)
+        self.collar_anim_t = max(0.0, self.collar_anim_t - dt)
+        return landed_impact, idle_event
+
+    def compose(self, assets, outfit, accessory, emotion, dragging, grab_part,
+                collar_relaxed=False, phone_glow_alpha=0.0):
+        """Composite all character layers (5 outfits + relaxed collar + sit/phone/collar poses) with pivots."""
         comp = self.comp
         comp.fill((0, 0, 0, 0))
-        by = self.breath_y
+        by = self.breath_y + self.walk_bob + self.crouch_y
         wx = self.weight_shift_x
+        is_sit = self.sitting and not dragging and not self.air
+        use_relaxed = collar_relaxed and outfit in (0, 4)
+        holding_phone = (self.ai_state == "bed_phone" and is_sit and grab_part != "armR"
+                         and self.wave_t <= 0 and self.collar_anim_t <= 0)
 
         def dp(name, extra_x=0.0, extra_y=0.0):
             px, py = PIVOTS[name]
@@ -349,38 +559,60 @@ class CharacterPhysics:
         h_ang = hd.angle()
         hx, hy = hd.x * 0.5, hd.y * 0.5 + by
 
-        # Layer 5a: Back hair (moves gently with breathing & head)
+        # Layer 5a: Back hair
         draw_spring(assets["hair_back"], "hairB", extra_x=hx * 0.6, extra_y=hy * 0.65, angle_add=h_ang * 0.45)
 
-        # Layer 0: Legs & shoes (stays grounded, slight upper lean via torso shift)
-        legs_key = f"legs_{outfit}_air" if (self.air or dragging) else f"legs_{outfit}_stand"
-        comp.blit(assets[legs_key], (PAD, PAD))
+        # Layer 0: Legs & shoes (stand / air / sitting dangling on bed!)
+        if self.air or dragging:
+            comp.blit(assets[f"legs_{outfit}_air"], (PAD, PAD))
+        elif is_sit:
+            # Cute gentle leg dangle sway when sitting on bed edge
+            dangle = math.sin(self.t * 2.4) * 2.6 if self.ai_state == "bed_phone" else 0.0
+            blit_pivoted(comp, assets[f"legs_{outfit}_sit"], (OX, OY - 76),
+                         (COX, COY - 76 + self.walk_bob), angle=dangle)
+        else:
+            walk_ang = math.sin(self.walk_phase) * 3.5 if self.ai_state == "walk" else 0.0
+            if abs(walk_ang) > 0.3:
+                blit_pivoted(comp, assets[f"legs_{outfit}_stand"], (OX, OY - 74),
+                             (COX, COY - 74 + self.walk_bob * 0.5), angle=walk_ang)
+            else:
+                comp.blit(assets[f"legs_{outfit}_stand"], (PAD, int(round(PAD + self.crouch_y * 0.4))))
 
         # Layer 1: Skirt / shorts / hoodie hem
-        draw_spring(assets[f"skirt_{outfit}"], "skirt")
+        draw_spring(assets[f"skirt_{outfit}"], "skirt", extra_y=self.walk_bob + self.crouch_y * 0.85)
 
-        # Layer 2: Torso & shoulders (breathing + gentle weight shift)
-        comp.blit(assets[f"torso_{outfit}"], (int(round(PAD + wx)), int(round(PAD + by))))
+        # Layer 2: Torso & shoulders (normal OR relaxed undone top button!)
+        torso_key = f"torso_{outfit}_relaxed" if use_relaxed else f"torso_{outfit}"
+        comp.blit(assets[torso_key], (int(round(PAD + wx)), int(round(PAD + by))))
 
-        if outfit in (0, 1):
+        if outfit in (0, 1, 4):
             draw_spring(assets[f"folds_{outfit}"], "folds", extra_y=by)
 
         # Layer 6: Arms
         draw_spring(assets[f"arm_l_{outfit}"], "armL", extra_y=by)
-        if self.wave_t > 0 and grab_part != "armR":
+        if self.collar_anim_t > 0 and grab_part != "armR":
+            wob = math.sin(self.t * 9.0) * 3.5
+            blit_pivoted(comp, assets[f"arm_r_{outfit}_collar"], PIVOTS["armR"], dp("armR", 0, by), angle=wob)
+        elif self.wave_t > 0 and grab_part != "armR":
             wob = math.sin(self.t * 15) * 14.0
             blit_pivoted(comp, assets[f"arm_r_{outfit}_wave"], PIVOTS["armR"], dp("armR", 0, by), angle=wob)
+        elif holding_phone:
+            bob_p = math.sin(self.t * 2.6) * 1.4
+            blit_pivoted(comp, assets[f"arm_r_{outfit}_phone"], PIVOTS["armR"], dp("armR", 0, by), angle=bob_p)
         else:
             draw_spring(assets[f"arm_r_{outfit}"], "armR", extra_y=by)
 
+        # Necktie (normal or loosened relaxed variant)
         if outfit == 0:
-            draw_spring(assets["tie"], "tie", extra_y=by)
+            draw_spring(assets["tie_0_relaxed" if use_relaxed else "tie"], "tie", extra_y=by)
+        elif outfit == 4:
+            draw_spring(assets["tie_4_relaxed" if use_relaxed else "tie_loose"], "tie", extra_y=by)
 
-        # Layer 4: Head + Face + Tracking Irises + Wearable Accessories!
+        # Layer 4: Head + Face + Tracking Irises + Wearable Accessories
         hc = self.head_comp
         hc.fill((0, 0, 0, 0))
         hc.blit(assets["head_base"], (0, 0))
-        eye_track_emos = ("normal", "blush", "smug", "surprised", "pout")
+        eye_track_emos = ("normal", "blush", "smug", "surprised", "pout", "romantic", "flustered")
         if self.blinking > 0 and emotion in eye_track_emos:
             hc.blit(assets["face_blink"], (0, 0))
         else:
@@ -389,12 +621,11 @@ class CharacterPhysics:
                 iris = assets["iris"]
                 px = int(round(self.pup[0]))
                 py = int(round(self.pup[1]))
-                if emotion == "blush":
+                if emotion in ("blush", "flustered"):
                     px = -1 if self.pup[0] >= 0 else 1
                 hc.blit(iris, (OX - 8 - 4 + px, OY - 161 - 4 + py))
                 hc.blit(iris, (OX + 8 - 4 + px, OY - 161 - 4 + py))
 
-        # Wearable glasses sit cleanly over eyes (behind bangs tips? Actually in front of eyes!)
         if accessory == 1:
             hc.blit(assets["acc_glasses"], (0, 0))
 
@@ -406,7 +637,6 @@ class CharacterPhysics:
         draw_spring(assets["hair_front_r"], "hairR", extra_x=hx, extra_y=hy, angle_add=h_ang * 0.65)
         draw_spring(assets["hair_bangs"], "bangs", extra_x=hx, extra_y=hy, angle_add=h_ang * 0.85)
 
-        # Wearable cat-ear headband sits cleanly atop her crown & follows head rotation!
         if accessory == 2:
             blit_pivoted(comp, assets["acc_ears"], PIVOTS["head"], dp("head", hx, hy), angle=h_ang, sx=hsx, sy=hsy)
 

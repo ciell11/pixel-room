@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""SaveManager: automatic JSON persistence beside the executable (with AppData fallback)."""
+"""SaveManager: bulletproof JSON persistence with corruption recovery & v0.2/v0.3 compatibility."""
 import os
 import json
 from constants import app_dir, clamp, OUTFIT_COUNT, ACC_COUNT
@@ -8,11 +8,16 @@ from constants import app_dir, clamp, OUTFIT_COUNT, ACC_COUNT
 DEFAULT_SAVE = {
     "outfit": 0,
     "accessory": 0,
+    "collar_relaxed": False,
     "mood": 65.0,
+    "affinity_xp": 0,
     "light": 2,
     "lamp_on": True,
+    "fairy_on": True,
     "curtains_closed": False,
     "poster_idx": 0,
+    "free_life": True,
+    "music_on": False,
     "physics": 1.0,
     "volume": 0.6,
     "topmost": False,
@@ -27,7 +32,6 @@ class SaveManager:
         appdata_path = os.path.join(
             os.getenv("APPDATA") or os.path.expanduser("~"), "PixelRoom", "save.json"
         )
-        # Prefer local save.json next to .exe/script if directory is writable
         self.path = local_path if self._is_writable(app_dir()) else appdata_path
         self.data = dict(DEFAULT_SAVE)
         self.load()
@@ -43,32 +47,56 @@ class SaveManager:
         except Exception:
             return False
 
+    @staticmethod
+    def _safe_int(val, default):
+        try:
+            return int(val)
+        except Exception:
+            return default
+
+    @staticmethod
+    def _safe_float(val, default):
+        try:
+            v = float(val)
+            return default if (v != v) else v  # guard NaN
+        except Exception:
+            return default
+
     def load(self):
         self.data = dict(DEFAULT_SAVE)
         try:
-            with open(self.path, "r", encoding="utf-8") as f:
-                loaded = json.load(f)
-            if isinstance(loaded, dict):
-                self.data.update(loaded)
+            if os.path.exists(self.path):
+                with open(self.path, "r", encoding="utf-8") as f:
+                    loaded = json.load(f)
+                if isinstance(loaded, dict):
+                    for k in DEFAULT_SAVE:
+                        if k in loaded:
+                            self.data[k] = loaded[k]
         except Exception:
-            pass
+            # Corrupted JSON -> fall back cleanly to defaults without crashing!
+            self.data = dict(DEFAULT_SAVE)
         self._sanitize()
         return self.data
 
     def _sanitize(self):
         d = self.data
-        d["outfit"] = int(d.get("outfit", 0)) % OUTFIT_COUNT
-        d["accessory"] = int(d.get("accessory", 0)) % ACC_COUNT
-        d["mood"] = float(clamp(d.get("mood", 65.0), 0.0, 100.0))
-        d["light"] = int(clamp(d.get("light", 2), 0, 2))
+        d["outfit"] = self._safe_int(d.get("outfit"), 0) % OUTFIT_COUNT
+        d["accessory"] = self._safe_int(d.get("accessory"), 0) % ACC_COUNT
+        d["collar_relaxed"] = bool(d.get("collar_relaxed", False))
+        d["mood"] = float(clamp(self._safe_float(d.get("mood"), 65.0), 0.0, 100.0))
+        d["affinity_xp"] = max(0, self._safe_int(d.get("affinity_xp"), 0))
+        d["light"] = int(clamp(self._safe_int(d.get("light"), 2), 0, 3))
         d["lamp_on"] = bool(d.get("lamp_on", True))
+        d["fairy_on"] = bool(d.get("fairy_on", True))
         d["curtains_closed"] = bool(d.get("curtains_closed", False))
-        d["poster_idx"] = int(d.get("poster_idx", 0)) % 3
-        d["physics"] = round(float(clamp(d.get("physics", 1.0), 0.0, 1.5)), 2)
-        d["volume"] = round(float(clamp(d.get("volume", 0.6), 0.0, 1.0)), 2)
+        d["poster_idx"] = self._safe_int(d.get("poster_idx"), 0) % 3
+        d["free_life"] = bool(d.get("free_life", True))
+        d["music_on"] = bool(d.get("music_on", False))
+        d["physics"] = round(float(clamp(self._safe_float(d.get("physics"), 1.0), 0.0, 1.5)), 2)
+        d["volume"] = round(float(clamp(self._safe_float(d.get("volume"), 0.6), 0.0, 1.0)), 2)
         d["topmost"] = bool(d.get("topmost", False))
-        d["scale"] = int(d.get("scale", 0))
-        d["rps_wins"] = max(0, int(d.get("rps_wins", 0)))
+        d["scale"] = max(0, self._safe_int(d.get("scale"), 0))
+        d["rps_wins"] = max(0, self._safe_int(d.get("rps_wins"), 0))
 
     def save(self):
         self._sanitize()
@@ -76,8 +104,10 @@ class SaveManager:
             parent = os.path.dirname(self.path)
             if parent:
                 os.makedirs(parent, exist_ok=True)
-            with open(self.path, "w", encoding="utf-8") as f:
+            tmp = self.path + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as f:
                 json.dump(self.data, f, indent=2, ensure_ascii=False)
+            os.replace(tmp, self.path)
         except Exception:
             pass
 

@@ -1,6 +1,6 @@
-# Pixel Room — Marin Kitagawa (`v0.2-beta`)
+# Pixel Room — Marin Kitagawa (`v0.4-beta` — Living Room & Dynamic Affinity Update)
 
-A cozy 16-bit interactive pixel-art desktop room & companion featuring **Marin Kitagawa** from *My Dress-Up Darling* (*Sono Bisque Doll wa Koi wo Suru*), built with Python + Pygame-CE (native `640×360` with crisp Nearest-Neighbor `2x`/`3x` scaling, *sel-out* colored outlines, and clamped multi-layer spring-damper physics).
+A cozy 16-bit interactive pixel-art desktop room & companion featuring **Marin Kitagawa** from *My Dress-Up Darling* (*Sono Bisque Doll wa Koi wo Suru*), built with Python + Pygame-CE (native `640×360` with pixel-perfect DPI-aware Nearest-Neighbor `1x`/`2x`/`3x` scaling, *sel-out* colored outlines, Bayer-dithered lighting, and clamped multi-layer spring-damper physics).
 
 > **Download Windows Standalone `.exe` (No Python required):** grab `PixelRoom.exe` directly from the **[Releases](../../releases)** tab!
 >
@@ -10,29 +10,28 @@ A cozy 16-bit interactive pixel-art desktop room & companion featuring **Marin K
 
 ## Screenshots
 
-| Summer Outfit, Cat Ears & Drawer Items | Rock-Paper-Scissors & Evening Lamp | Closed Curtains & Dark Sleepy Mode |
+| Bed Sitting, Phone Glow & Bayer-Dithered Night | Canon Relaxed V-Collar & Living Window | Romantic Glow, Open Drawers & RPS Minigame |
 | :---: | :---: | :---: |
-| ![Summer & Drawers](screenshots/summer_drawers.png) | ![Evening RPS](screenshots/evening_rps.png) | ![Night Sleepy](screenshots/dark_sleepy.png) |
+| ![Bed & Phone Glow](screenshots/bed_phone_dither.png) | ![Canon Collar & Day](screenshots/canon_collar_living.png) | ![Romantic Glow & RPS](screenshots/romantic_rps.png) |
 
 ---
 
 ## Controls
 
-- **LMB (Drag / Pull / Toss):** grab & toss Marin, pull her arms, hair strands, tie, skirt, or cheek like elastic springs, throw the bed pillow, feed bubble tea, or drag **cosplay glasses** & the **retro camera** out of the nightstand drawers!
-- **RMB (Hold & Move on Head):** gentle headpat — her head tilts toward your cursor, eyes close happily, hearts float up, and mood rises.
-- **Click Room Objects:** smoothly slide window **curtains**, toggle the **table lamp**, open the **wardrobe** (4 outfits), swap **wall posters** (3 designs), open **nightstand drawers**, bounce the **laundry basket**, or flip the **floor manga**.
-- **Corner Icons:** Settings (physics `0–150%`, volume, *Always on Top*, window scale, Reset Pose, Reset Progress), Wardrobe (4 outfits), Accessories (Cosplay Glasses / Cat Ears), Lighting, **Rock-Paper-Scissors Minigame**, 8-Emotion switcher, and Wave.
+- **LMB (Drag / Pull / Drop on Bed / Toss):** grab & toss Marin — or **drop her onto the bed** so she sits dangling her legs with her smartphone! Pull her arms, hair strands, tie, skirt, or cheek like elastic springs; throw the bed pillow (**throw it 2–3 times and she catches it & throws it back!**); feed bubble tea; or drag **cosplay glasses**, the **candy/gift box**, and the **retro camera** out of the nightstand drawers.
+- **RMB (Hold & Move on Head):** gentle headpat with a custom pixel heart-hand cursor — her head tilts toward you, eyes close happily, hearts float up, and both Mood & **Affinity** grow.
+- **Click Room Objects (with 1px hover outlines):** toggle hanging **Fairy Lights**, smoothly slide window **curtains**, toggle the **table lamp**, open the **wardrobe** (5 outfits), swap detailed **wall posters** (3 designs), open **nightstand drawers**, bounce the **laundry basket**, or flip the **floor manga**.
+- **Corner Icons:** Settings (`0–150%` physics, volume, *Always on Top*, **Free Life AI toggle**, window scale, Reset Pose, Reset Progress), Wardrobe (5 outfits), Accessories (Cosplay Glasses / Cat Ears), Lighting (incl. **Romantic Glow**), **16-bit Lo-Fi Music Player**, **Rock-Paper-Scissors Minigame**, 10-Emotion switcher, and Wave.
 
 ---
 
-## What's New in `v0.2-beta`
+## What's New in `v0.4-beta`
 
-- **Visual Juice & Smooth Lerp:** real-time smooth transitions for sliding curtains and room lighting/sky crossfades (Day → Sunset → Evening Lamp → Pitch Dark), dynamic height-scaled floor shadows under Marin/pillow/boba, floating daylight dust motes in window sunbeams, and warm glowing micro-sparkles around the evening lamp.
-- **Lively Idle Animations:** gentle shoulder/hair breathing, occasional natural weight-shifting, blinking, and spontaneous idle glances or hair-strand adjustments.
-- **4th Outfit + Wearable Accessories:** added a **Summer Casual** outfit (mint top, blue denim shorts with belt, white sneakers) alongside School Uniform, Home Outfit, and Oversized Hoodie — plus wearable **Cosplay Glasses** and a **Cat-Ear Headband**.
-- **Draggable Drawer Items:** open the nightstand drawers to pull out **Cosplay Glasses** (hand them to Marin to put on) or a **Retro Camera** (bring it to Marin for a selfie with full-screen flash & shutter SFX!).
-- **Rock-Paper-Scissors Minigame:** play quick rounds directly in the room with animated countdown, 16-bit gesture icons, win counter, reactions, and mood rewards.
-- **Auto-Save (`save.json`) & Clean Modular Architecture:** automatically saves outfit, accessory, mood, room lighting/curtains/poster, volume, window scale, and *Always on Top* next to `PixelRoom.exe`, plus a 2-step **Reset Progress** button in Settings. Refactored into clean modules (`physics.py`, `room_objects.py`, `particles.py`, `audio_engine.py`, `save_manager.py`, `ui_manager.py`).
+- **Living Room AI Routine ("Свободная жизнь"):** Marin now lives naturally in her room (toggleable in Settings, ON by default) — walking around, sitting on the bed dangling her legs with a glowing smartphone (whose soft cyan Bayer-dithered light illuminates her face at night), crouching to read manga with page-flips, watching drifting clouds & shooting stars at the window, checking her hair by the wardrobe, sipping bubble tea, or napping on the bed in pitch darkness.
+- **"Tease vs Care" Dynamic Reactions & Pillow Counter-Throw:** interrupting her reading/phone or turning off the light while she reads makes her pout; turning the light on for her or bringing bubble tea / a gift to her on the bed earns bonus Affinity & warm lines! Throw the pillow at her twice in a row and she catches it and fires it right back at your cursor.
+- **Canon Top-Button Collar Animation & Visual Fixes:** redesigned 5th outfit (**Canon Relaxed Shirt**) with a clear unbuttoned V-neck, lapels, collarbones & loosened navy tie; at **Affinity Lv.4+ & high Mood** she raises her hand and relaxes her top collar button (and buttons it back if teased too much!). Shrunk earrings to dainty 1–2px silver glints, fixed Windows DPI scaling (zero black strips), removed the stray rug artifact, and aligned the top-right Mood/Affinity HUD cleanly above the fairy lights.
+- **16-bit Graphics, Living Window & Built-in Lo-Fi Player:** replaced flat light circles with **4×4 Bayer-dithered** halos for the fairy lights, desk lamp (with warm floor/wall bounce), and phone screen; added live drifting clouds, twinkling stars & shooting stars behind window mullions; redesigned all 3 wall posters in detailed 16-bit art; and added a click-free **16-bit Lo-Fi chill music loop** toggle.
+- **Indie UX Polish:** crisp **1px hover outlines** on every interactive room object, **custom 16-bit pixel cursors** (`arrow`, `hand_open`, `hand_grab`, `hand_heart`), wrapped speech bubbles, smooth alpha-fading Settings modal, clamped `dt <= 0.05`, and corruption-proof `SaveManager`.
 
 ---
 

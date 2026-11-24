@@ -206,11 +206,40 @@ def line(draw, p0, p1, fill, width=1):
 
 
 # ------------------------------------------------------------------ character layers (natural contrapposto stance)
-def build_legs(outfit, air=False):
-    """Layer 0: Natural anime stance (weight shifted slightly onto left leg, right leg relaxed)."""
+def build_legs(outfit, pose="stand"):
+    """Layer 0: Natural contrapposto stance ('stand'), tucked ('air'), or dangling on bed edge ('sit')."""
     img = new_char()
     d = ImageDraw.Draw(img)
-    school = (outfit == 0)
+
+    if pose == "sit":
+        # Sitting naturally on the edge of the bed: thighs angled forward, calves dangling!
+        for side in (-1, 1):
+            s = side
+            # Thigh resting forward on mattress
+            poly(d, [(s * 12, -82), (s * 14, -64), (s * 13, -52), (s * 3, -52), (s * 2, -70), (s * 2, -82)], SKIN)
+            poly(d, [(s * 10, -82), (s * 14, -64), (s * 13, -52), (s * 9, -52), (s * 9, -82)], SKIN_SH)
+            # Dangling lower leg slightly angled
+            poly(d, [(s * 12.5, -54), (s * 11, -30), (s * 9.5, -14), (s * 3.5, -14), (s * 4, -32), (s * 3.5, -54)], SKIN)
+            ell(d, s * 8 - 2, -55, 4, 3, SKIN_HI)
+            if outfit in (0, 4):
+                poly(d, [(s * 11, -34), (s * 9.5, -14), (s * 3.5, -14), (s * 4, -34)], SOCK)
+                poly(d, [(s * 10, -16), (s * 11.5, -9), (s * 9, -7), (s * 3, -8), (s * 3.5, -16)], SHOE)
+                rect(d, min(s * 9, s * 4), -14, 5, 2, SHOE_HI)
+            elif outfit == 1:
+                poly(d, [(s * 10, -16), (s * 11.5, -9), (s * 9, -7), (s * 3, -8), (s * 3.5, -16)], SLIP)
+                rect(d, min(s * 9, s * 4), -14, 5, 2, SLIP_HI)
+            elif outfit == 2:
+                poly(d, [(s * 12, -48), (s * 11, -30), (s * 9.5, -14), (s * 3.5, -14), (s * 4, -32), (s * 4, -48)], SOCK)
+                line(d, (s * 4, -45), (s * 11.5, -45), WHITE, 1)
+                poly(d, [(s * 10, -16), (s * 11.5, -9), (s * 9, -7), (s * 3, -8), (s * 3.5, -16)], SNEAK)
+                rect(d, min(s * 9, s * 4), -9, 6, 2, SNEAK_HI)
+            else:
+                poly(d, [(s * 10, -21), (s * 9.5, -14), (s * 3.5, -14), (s * 4, -21)], WHITE)
+                poly(d, [(s * 10, -16), (s * 11.5, -9), (s * 9, -7), (s * 3, -8), (s * 3.5, -16)], WHITE)
+                rect(d, min(s * 9, s * 4), -12, 6, 2, MINT)
+        return sel_out(img)
+
+    air = (pose == "air")
 
     if not air:
         # Left leg (viewer's left): supporting weight, graceful straight-slender curve
@@ -235,7 +264,7 @@ def build_legs(outfit, air=False):
         ell(d, 7, -39, 4, 3, SKIN_HI)
         rect(d, 2, -74, 11, 4, SKIN_SH)
 
-        if outfit == 0:
+        if outfit in (0, 4):
             # Mid-calf black socks
             poly(d, [(-11, -26), (-8.5, -12), (-8, -5), (-2, -5), (-2.5, -14), (-3.5, -26)], SOCK)
             line(d, (-7, -25), (-5.5, -7), SOCK_HI, 2)
@@ -284,7 +313,7 @@ def build_legs(outfit, air=False):
             calf = [(s * 14, -44), (s * 11, -22), (s * 9, -12), (s * 2.5, -13), (s * 4.5, -30), (s * 5.5, -44)]
             poly(d, calf, SKIN)
             poly(d, [(s * 11, -72), (s * 14, -52), (s * 12, -42), (s * 9, -43), (s * 9, -72)], SKIN_SH)
-            if outfit == 0:
+            if outfit in (0, 4):
                 poly(d, [(s * 11.5, -30), (s * 9, -12), (s * 2.5, -13), (s * 4.5, -30)], SOCK)
                 poly(d, [(s * 10, -14), (s * 11, -8), (s * 8, -6), (s * 2, -7), (s * 2.5, -14)], SHOE)
                 rect(d, min(s * 9, s * 3), -12, 5, 2, SHOE_HI)
@@ -304,10 +333,10 @@ def build_legs(outfit, air=False):
 
 
 def build_lower_garment(outfit):
-    """Layer 1: Pleated skirt (0), Home shorts (1), Hoodie hem (2), Blue denim shorts (3)."""
+    """Layer 1: Pleated skirt (0, 4), Home shorts (1), Hoodie hem (2), Blue denim shorts (3)."""
     img = new_char()
     d = ImageDraw.Draw(img)
-    if outfit == 0:
+    if outfit in (0, 4):
         pts = [
             (-12, -94), (12, -94),
             (20, -68), (15, -66), (8, -67), (0, -66), (-8, -67), (-15, -66), (-20, -68)
@@ -351,8 +380,8 @@ def build_lower_garment(outfit):
     return sel_out(img)
 
 
-def build_torso(outfit):
-    """Layer 2: Narrow sloping shoulders, slender waist, open V-neck shirt with collarbones & waist knot."""
+def build_torso(outfit, relaxed=False):
+    """Layer 2: Narrow sloping shoulders, slender waist, crisp collared shirts + relaxed top-button variant."""
     img = new_char()
     d = ImageDraw.Draw(img)
     school = (outfit == 0)
@@ -367,22 +396,23 @@ def build_torso(outfit):
             (-14, -120), (-13, -128)
         ]
         poly(d, pts, SHIRT)
-        # Soft cloth fold shading
         poly(d, [(8, -128), (13, -126), (13, -116), (11, -94), (7, -94), (9, -112)], SHIRT_SH)
         poly(d, [(-13, -122), (-10, -122), (-9, -94), (-11, -94)], SHIRT_SH)
         poly(d, [(-9, -124), (-3, -124), (-4, -106), (-9, -106)], SHIRT_HI)
-        # Pocket
         rect(d, 4, -116, 6, 6, SHIRT_SH)
         rect(d, 5, -115, 4, 4, SHIRT)
-        # Open V-neck showing delicate collarbones
-        poly(d, [(-5, -134), (5, -134), (0, -121)], SKIN)
-        line(d, (-4, -129), (-1, -128), SKIN_SH, 1)
-        line(d, (4, -129), (1, -128), SKIN_SH, 1)
-        # Collar lapels
-        poly(d, [(-8, -133), (-4, -134), (-2, -122), (-8, -125)], SHIRT_HI)
-        poly(d, [(8, -133), (4, -134), (2, -122), (8, -125)], SHIRT_HI)
-        line(d, (-8, -125), (-2, -122), SHIRT_D, 1)
-        line(d, (8, -125), (2, -122), SHIRT_D, 1)
+        # V-neck depth: standard vs relaxed undone top button
+        v_bot = -115 if relaxed else -121
+        v_w = 7 if relaxed else 5
+        poly(d, [(-v_w, -134), (v_w, -134), (0, v_bot)], SKIN)
+        line(d, (-4, -128), (-1, -127), SKIN_SH, 1)
+        line(d, (4, -128), (1, -127), SKIN_SH, 1)
+        # Folded white shirt collar lapels
+        lap_x = 11 if relaxed else 9
+        poly(d, [(-lap_x, -133), (-v_w + 1, -134), (-2, v_bot + 1), (-lap_x, -123)], SHIRT_HI)
+        poly(d, [(lap_x, -133), (v_w - 1, -134), (2, v_bot + 1), (lap_x, -123)], SHIRT_HI)
+        line(d, (-lap_x, -123), (-2, v_bot + 1), SHIRT_D, 1)
+        line(d, (lap_x, -123), (2, v_bot + 1), SHIRT_D, 1)
         # Waist knot
         ell(d, -4, -96, 8, 5, SHIRT_SH)
         ell(d, -3, -96, 6, 4, SHIRT_HI)
@@ -437,7 +467,7 @@ def build_torso(outfit):
         rect(d, -1, -111, 3, 3, WHITE)
         rect(d, 0, -113, 1, 7, WHITE)
         rect(d, -3, -110, 7, 1, WHITE)
-    else:
+    elif outfit == 3:
         # Outfit 3: Summer Casual pastel mint fitted T-shirt with white collar trim & heart print
         pts = [
             (-5, -133), (5, -133),
@@ -450,15 +480,49 @@ def build_torso(outfit):
         poly(d, [(8, -128), (13, -126), (13, -116), (11, -94), (7, -94), (9, -112)], MINT_SH)
         poly(d, [(-13, -122), (-10, -122), (-9, -94), (-11, -94)], MINT_SH)
         poly(d, [(-9, -123), (-2, -123), (-3, -102), (-9, -102)], MINT_HI)
-        # Round summer crew neck with crisp white trim
         ell(d, -6, -137, 12, 9, SKIN)
         d.arc([OX - 6, OY - 137, OX + 6, OY - 128], 0, 180, fill=WHITE, width=2)
-        # Cute small coral heart graphic on front
         rect(d, -2, -116, 2, 2, PINK)
         rect(d, 1, -116, 2, 2, PINK)
         rect(d, -2, -114, 5, 2, PINK)
         rect(d, -1, -112, 3, 1, PINK)
         rect(d, 0, -111, 1, 1, PINK)
+    else:
+        # Outfit 4: Canon Relaxed Shirt — clearly readable unbuttoned V-neck, folded lapels & collarbones!
+        pts = [
+            (-6, -133), (6, -133),
+            (14, -128), (15, -119),
+            (13, -105), (12, -93),
+            (-12, -93), (-13, -105),
+            (-15, -119), (-14, -128)
+        ]
+        poly(d, pts, SHIRT)
+        # Soft anime cloth shading & waist folds
+        poly(d, [(8, -128), (14, -125), (14, -115), (12, -93), (7, -93), (9, -112)], SHIRT_SH)
+        poly(d, [(-14, -121), (-10, -121), (-9, -93), (-12, -93)], SHIRT_SH)
+        poly(d, [(-9, -122), (-3, -122), (-4, -104), (-9, -104)], SHIRT_HI)
+        # Clearly readable wide unbuttoned V-neck showing neck & collarbones
+        v_bot = -111 if relaxed else -116
+        v_w = 8 if relaxed else 7
+        poly(d, [(-v_w, -134), (v_w, -134), (0, v_bot)], SKIN)
+        poly(d, [(-v_w + 1, -134), (v_w - 1, -134), (0, -130)], SKIN_SH)
+        # Crisp delicate collarbone shading inside V-neck
+        line(d, (-5, -127), (-1, -125), SKIN_SH, 1)
+        line(d, (5, -127), (1, -125), SKIN_SH, 1)
+        line(d, (-v_w, -134), (0, v_bot), SHIRT_D, 1)
+        line(d, (v_w, -134), (0, v_bot), SHIRT_D, 1)
+        # Crisp folded-out white collar lapels!
+        lap_x = 12 if relaxed else 11
+        poly(d, [(-lap_x, -131), (-v_w + 1, -134), (-3, v_bot + 3), (-lap_x, -121)], SHIRT_HI)
+        poly(d, [(lap_x, -131), (v_w - 1, -134), (3, v_bot + 3), (lap_x, -121)], SHIRT_HI)
+        line(d, (-lap_x, -121), (-3, v_bot + 3), SHIRT_D, 1)
+        line(d, (lap_x, -121), (3, v_bot + 3), SHIRT_D, 1)
+        # Shirt pocket & neat placket buttons below V-opening
+        rect(d, 5, -112, 6, 6, SHIRT_SH)
+        rect(d, 6, -111, 4, 4, SHIRT)
+        line(d, (0, v_bot), (0, -94), SHIRT_SH, 1)
+        for yb in range(v_bot + 4, -95, 6):
+            rect(d, -1, yb, 2, 2, SHIRT_D)
 
     return sel_out(img)
 
@@ -475,24 +539,48 @@ def build_shirt_folds(outfit):
     return img
 
 
-def build_tie():
-    """Layer 5d: Loosely hanging sleek grey necktie (pivots around knot at (0, -126))."""
+def build_tie(relaxed=False):
+    """Layer 5d (Outfit 0): Sleek grey necktie (standard or loosened below V-neck)."""
     img = new_char()
     d = ImageDraw.Draw(img)
-    poly(d, [(-2, -127), (2, -127), (2, -123), (-2, -123)], TIE_SH)
-    rect(d, -1, -126, 2, 2, TIE_HI)
-    poly(d, [(-1.5, -123), (1.5, -123), (3, -99), (0, -93), (-3, -99)], TIE)
-    poly(d, [(0, -123), (1.5, -123), (3, -99), (0, -93)], TIE_SH)
-    line(d, (-1, -121), (-1.5, -100), TIE_HI, 1)
+    ky = -120 if relaxed else -127
+    if relaxed:
+        line(d, (-5, -131), (-1, ky + 1), TIE_SH, 1)
+        line(d, (5, -131), (1, ky + 1), TIE_SH, 1)
+    poly(d, [(-2, ky), (2, ky), (2, ky + 4), (-2, ky + 4)], TIE_SH)
+    rect(d, -1, ky + 1, 2, 2, TIE_HI)
+    poly(d, [(-1.5, ky + 4), (1.5, ky + 4), (3, ky + 28), (0, ky + 34), (-3, ky + 28)], TIE)
+    poly(d, [(0, ky + 4), (1.5, ky + 4), (3, ky + 28), (0, ky + 34)], TIE_SH)
+    line(d, (-1, ky + 6), (-1.5, ky + 27), TIE_HI, 1)
+    return sel_out(img)
+
+
+def build_tie_loose(relaxed=False):
+    """Layer 5d (Outfit 4): Loosened navy-blue necktie sitting cleanly BELOW the open V-neck."""
+    img = new_char()
+    d = ImageDraw.Draw(img)
+    nt_hi = (98, 124, 178, 255)
+    nt    = (64, 86, 138, 255)
+    nt_sh = (42, 56, 98, 255)
+    ky = -112 if relaxed else -117
+    # Loose collar cords tucked neatly along inner V-neck edge (leaving V-neck skin clear!)
+    line(d, (-6, -131), (-1, ky + 1), nt_sh, 1)
+    line(d, (6, -131), (1, ky + 1), nt_sh, 1)
+    poly(d, [(-2, ky), (2, ky), (2, ky + 4), (-2, ky + 4)], nt_sh)
+    rect(d, -1, ky + 1, 2, 2, nt_hi)
+    poly(d, [(-1.5, ky + 4), (1.5, ky + 4), (3, ky + 24), (0, ky + 29), (-3, ky + 24)], nt)
+    poly(d, [(0, ky + 4), (1.5, ky + 4), (3, ky + 24), (0, ky + 29)], nt_sh)
+    line(d, (-1, ky + 6), (-1.5, ky + 23), nt_hi, 1)
     return sel_out(img)
 
 
 def build_arm(outfit, side, pose="idle"):
-    """Layer 6: Graceful slender arms — School (0), Home (1), Hoodie (2), Summer Tee (3)."""
+    """Layer 6: Graceful slender arms — School (0), Home (1), Hoodie (2), Summer (3), Canon Short-Sleeve (4)."""
     img = new_char()
     d = ImageDraw.Draw(img)
     hoodie = (outfit == 2)
     summer = (outfit == 3)
+    relaxed = (outfit == 4)
     school = (outfit == 0)
 
     if pose == "idle":
@@ -507,20 +595,21 @@ def build_arm(outfit, side, pose="idle"):
                 line(d, (20, -122), (28, -89), HOOD_SH, 2)
                 poly(d, [(15, -85), (22, -80), (20, -76), (14, -81)], HOOD_SH)
                 poly(d, [(15, -80), (19, -77), (18, -73), (14, -76)], SKIN)
-        elif summer:
-            # Short mint summer tee sleeves + graceful bare arms + cute pink bracelet!
+        elif summer or relaxed:
+            c_sl = MINT if summer else SHIRT
+            c_trim = WHITE if summer else SHIRT_SH
             if side == -1:
-                poly(d, [(-11, -128), (-17, -126), (-20, -114), (-14, -113), (-12, -118)], MINT)
-                line(d, (-20, -114), (-14, -113), WHITE, 1)
-                poly(d, [(-19, -113), (-14, -113), (-21, -82), (-25, -83)], SKIN)
-                line(d, (-18, -112), (-24, -83), SKIN_SH, 1)
+                poly(d, [(-11, -128), (-17, -126), (-21, -112), (-14, -111), (-12, -118)], c_sl)
+                line(d, (-21, -112), (-14, -111), c_trim, 1)
+                poly(d, [(-19, -111), (-14, -111), (-21, -82), (-25, -83)], SKIN)
+                line(d, (-18, -110), (-24, -83), SKIN_SH, 1)
                 poly(d, [(-25, -83), (-21, -82), (-20, -75), (-23, -73), (-26, -77)], SKIN)
-                line(d, (-24, -85), (-20, -84), PINK, 2)  # cute bracelet
+                line(d, (-24, -85), (-20, -84), PINK if summer else SILVER, 2)
             else:
-                poly(d, [(11, -128), (17, -126), (21, -114), (15, -113), (12, -118)], MINT)
-                line(d, (15, -113), (21, -114), WHITE, 1)
-                poly(d, [(16, -113), (21, -113), (25, -90), (20, -82), (16, -84), (19, -91)], SKIN)
-                line(d, (20, -112), (24, -90), SKIN_SH, 1)
+                poly(d, [(11, -128), (17, -126), (22, -112), (15, -111), (12, -118)], c_sl)
+                line(d, (15, -111), (22, -112), c_trim, 1)
+                poly(d, [(16, -111), (21, -111), (25, -90), (20, -82), (16, -84), (19, -91)], SKIN)
+                line(d, (20, -110), (24, -90), SKIN_SH, 1)
                 poly(d, [(16, -84), (20, -82), (19, -76), (15, -75), (14, -79)], SKIN)
         elif side == -1:
             sl_y = -104 if school else -99
@@ -552,30 +641,49 @@ def build_arm(outfit, side, pose="idle"):
         poly(d, forearm, HOOD if hoodie else SKIN)
         ell(d, 28, -173, 7, 9, SKIN)
         rect(d, 28, -172, 2, 4, SKIN_HI)
+    elif pose == "collar":
+        # Right hand raised gently to top shirt collar/button!
+        c_main = HOOD if hoodie else (MINT if summer else SHIRT)
+        sleeve = [(11, -128), (18, -126), (22, -112), (14, -111), (12, -118)]
+        poly(d, sleeve, c_main)
+        forearm = [(15, -112), (21, -113), (12, -122), (4, -125), (4, -120), (13, -115)]
+        poly(d, forearm, HOOD if hoodie else SKIN)
+        ell(d, 1, -126, 6, 5, SKIN)
+    elif pose == "phone":
+        # Right hand holding a glowing 16-bit smartphone in front while sitting on bed!
+        c_main = HOOD if hoodie else (MINT if summer else SHIRT)
+        sleeve = [(11, -128), (18, -126), (21, -110), (14, -110), (12, -118)]
+        poly(d, sleeve, c_main)
+        forearm = [(15, -110), (20, -110), (13, -104), (6, -106), (6, -101), (14, -100)]
+        poly(d, forearm, HOOD if hoodie else SKIN)
+        # Cute pink-cased smartphone with glowing screen
+        rect(d, 1, -116, 9, 14, (244, 134, 168, 255))
+        rect(d, 2, -114, 7, 10, (186, 238, 255, 255))
+        rect(d, 3, -113, 3, 2, WHITE)
+        ell(d, 4, -108, 6, 6, SKIN)
 
     return sel_out(img)
 
 
 def build_head_base():
-    """Layer 4 base: Slender neck with choker + proportional anime head with soft pointed chin."""
+    """Layer 4 base: Slender neck with choker + proportional anime head + dainty 1-2px silver earrings."""
     img = new_char()
     d = ImageDraw.Draw(img)
 
     # Slender neck
     poly(d, [(-3, -148), (3, -148), (4, -132), (-4, -132)], SKIN)
     poly(d, [(-3, -147), (3, -147), (3.5, -142), (0, -140), (-3.5, -142)], SKIN_SH)
-    # Black choker with metallic silver ring
+    # Crisp canon black choker with metallic silver ring/pendant
     rect(d, -4, -139, 8, 3, CHOKER)
-    ell(d, -2, -137, 4, 4, SILVER)
-    rect(d, -1, -136, 2, 2, SKIN)
+    rect(d, -4, -139, 8, 1, (64, 56, 74, 255))
+    d.ellipse([OX - 2, OY - 137, OX + 2, OY - 133], outline=SILVER, width=1)
+    rect(d, -1, -137, 1, 1, WHITE)
 
-    # Delicate ears
-    ell(d, -18, -164, 4, 7, SKIN)
-    ell(d, -17, -163, 2, 4, SKIN_SH)
-    ell(d, 14, -164, 4, 7, SKIN)
-    ell(d, 15, -163, 2, 4, SKIN_SH)
+    # Neatly tucked ears (NO bloated grey blocks sticking out of hair!)
+    ell(d, -16, -163, 3, 6, SKIN)
+    ell(d, 13, -163, 3, 6, SKIN)
 
-    # Proportional anime head (~33px wide x 40px tall) with soft tapered V-chin (not a long oval!)
+    # Proportional anime head (~33px wide x 40px tall) with soft tapered V-chin
     head_pts = (
         bezier((-16, -169), (-16, -154), (-8, -147), 10) +
         bezier((-8, -147), (0, -142), (8, -147), 10) +
@@ -584,11 +692,17 @@ def build_head_base():
         bezier((0, -188), (-15, -186), (-16, -169), 10)
     )
     poly(d, head_pts, SKIN)
-    # Subtle side-cheek warmth & forehead shadow (NO under-eye dark circles!)
     poly(d, [(11, -170), (16, -168), (14, -155), (8, -147), (7, -149), (12, -158)], SKIN_SH)
     rect(d, -14, -176, 28, 4, SKIN_SH)
 
-    return sel_out(img)
+    out = sel_out(img)
+    # Paint dainty 1-2px silver earring studs/glints AFTER sel_out so they stay crisp & tiny!
+    od = ImageDraw.Draw(out)
+    od.rectangle([OX - 16, OY - 158, OX - 15, OY - 157], fill=SILVER)
+    od.point((OX - 16, OY - 158), fill=WHITE)
+    od.rectangle([OX + 14, OY - 158, OX + 15, OY - 157], fill=SILVER)
+    od.point((OX + 15, OY - 158), fill=WHITE)
+    return out
 
 
 def draw_almond_eye(d, cx, cy, side, wide=False):
@@ -651,12 +765,18 @@ def build_face(emotion):
     d = ImageDraw.Draw(img)
 
     # Cheek blush (clean warm pink)
-    if emotion == "blush":
-        bl = (255, 118, 148, 200)
+    if emotion in ("blush", "flustered"):
+        bl = (255, 114, 146, 210)
         ell(d, -14, -156, 8, 4, bl)
         ell(d, 6, -156, 8, 4, bl)
         for bx in (-12, -10, -8, 8, 10, 12):
-            line(d, (bx, -155), (bx + 1, -153), (236, 84, 116, 210), 1)
+            line(d, (bx, -155), (bx + 1, -153), (236, 84, 116, 215), 1)
+    elif emotion == "romantic":
+        bl = (255, 134, 162, 165)
+        ell(d, -13, -156, 7, 4, bl)
+        ell(d, 6, -156, 7, 4, bl)
+        line(d, (-11, -154), (-10, -153), (242, 106, 136, 175), 1)
+        line(d, (9, -154), (10, -153), (242, 106, 136, 175), 1)
     elif emotion == "pout":
         bl = (252, 138, 160, 165)
         ell(d, -14, -155, 7, 4, bl)
@@ -674,7 +794,7 @@ def build_face(emotion):
     if emotion == "pout":
         line(d, (-12, -169), (-4, -166), BROW, 1)
         line(d, (4, -166), (12, -169), BROW, 1)
-    elif emotion == "blush":
+    elif emotion in ("blush", "flustered", "romantic"):
         line(d, (-12, -167), (-4, -170), BROW, 1)
         line(d, (4, -170), (12, -167), BROW, 1)
     elif emotion == "surprised":
@@ -685,9 +805,17 @@ def build_face(emotion):
         line(d, (4, -168), (12, -167), BROW, 1)
 
     # Eyes (y = -161)
-    if emotion in ("normal", "blush", "pout"):
+    if emotion in ("normal", "blush", "flustered", "pout"):
         draw_almond_eye(d, -8, -161, -1, wide=False)
         draw_almond_eye(d, 8, -161, 1, wide=False)
+    elif emotion == "romantic":
+        # Soft, warm gently half-lidded gaze
+        draw_almond_eye(d, -8, -161, -1, wide=False)
+        draw_almond_eye(d, 8, -161, 1, wide=False)
+        rect(d, -13, -165, 10, 2, SKIN)
+        rect(d, 3, -165, 10, 2, SKIN)
+        line(d, (-13, -163), (-3, -163), LASH, 2)
+        line(d, (3, -163), (13, -163), LASH, 2)
     elif emotion == "surprised":
         draw_almond_eye(d, -8, -161, -1, wide=True)
         draw_almond_eye(d, 8, -161, 1, wide=True)
@@ -742,6 +870,21 @@ def build_face(emotion):
     elif emotion == "blush":
         for x, y in ((-3, -149), (-2, -150), (-1, -149), (0, -148), (1, -149), (2, -150), (3, -149)):
             rect(d, x, y, 1, 1, MOUTH_C)
+    elif emotion == "romantic":
+        # Gentle warm soft smile
+        line(d, (-3, -149), (-1, -148), MOUTH_C, 1)
+        line(d, (-1, -148), (2, -148), MOUTH_C, 1)
+        line(d, (2, -148), (4, -150), MOUTH_C, 1)
+    elif emotion == "flustered":
+        # Wavy shy mouth + tiny cute heart/sweatdrop accent beside face!
+        for x, y in ((-3, -149), (-2, -150), (-1, -149), (0, -148), (1, -149), (2, -150), (3, -149)):
+            rect(d, x, y, 1, 1, MOUTH_C)
+        # Cute little pixel heart beside right temple
+        rect(d, 15, -170, 2, 2, PINK)
+        rect(d, 18, -170, 2, 2, PINK)
+        rect(d, 15, -168, 5, 2, PINK)
+        rect(d, 16, -166, 3, 1, PINK)
+        rect(d, 17, -165, 1, 1, PINK)
     elif emotion == "smug":
         # Confident playful cat-like grin
         line(d, (-4, -150), (-1, -148), MOUTH_C, 1)
@@ -1030,13 +1173,12 @@ def build_room(mode, wardrobe_open=False):
     d.polygon([(590, 146), (622, 146), (630, 172), (582, 172)], fill=shade_col, outline=OUT)
     d.line([(586, 170), (626, 170)], fill=(255, 252, 228) if mode == 2 else (210, 190, 160), width=2)
 
-    # Rug & floor clutter
+    # Rug & floor manga (removed stray bottom-right grey cushion artifact!)
     d.ellipse([172, 304, 476, 356], fill=(138, 96, 86), outline=OUT)
     d.ellipse([178, 308, 470, 352], fill=(182, 136, 118))
     d.ellipse([204, 314, 444, 346], outline=(158, 112, 98), width=2)
     d.rectangle([216, 274, 244, 286], fill=(124, 72, 92), outline=OUT, width=1)
     d.line([(218, 283), (242, 283)], fill=(244, 240, 232), width=2)
-    d.rounded_rectangle([464, 326, 514, 352], radius=8, fill=(214, 176, 142), outline=OUT, width=2)
 
     # Lighting atmosphere (lamp glow & daylight shafts are composited dynamically at runtime!)
     if mode == 1:
@@ -1097,35 +1239,80 @@ def build_curtain_panel(w=86, h=132):
 
 
 def build_poster(idx):
-    """3 distinct anime/cosplay pixel posters (48x66)."""
+    """3 detailed 16-bit anime cover / cosplay silhouette / cosmos posters (48x66)."""
     OUT = (54, 36, 44, 255)
     img = Image.new("RGBA", (48, 66), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
     if idx == 0:
-        # Original dark-haired anime idol poster (from reference)
-        d.rectangle([0, 0, 47, 65], fill=(112, 96, 146, 255), outline=OUT, width=2)
-        d.rectangle([6, 6, 42, 11], fill=(236, 220, 244, 255))
-        d.ellipse([14, 20, 34, 42], fill=(64, 46, 58, 255))
-        d.ellipse([17, 24, 30, 38], fill=(238, 198, 172, 255))
-        d.polygon([(10, 63), (15, 42), (33, 42), (38, 63)], fill=(72, 52, 66, 255))
+        # Poster 0: Detailed 16-bit Anime Cover (sunset sky, shaded dark-haired heroine portrait, banner)
+        for y in range(2, 64):
+            f = (y - 2) / 62.0
+            c = lerp_c((94, 72, 138, 255), (244, 164, 142, 255), f)
+            d.line([(2, y), (45, y)], fill=c)
+        # Background clouds & sparkle
+        d.rounded_rectangle([5, 16, 24, 21], radius=2, fill=(255, 224, 214, 255))
+        d.rounded_rectangle([26, 24, 43, 29], radius=2, fill=(255, 210, 200, 255))
+        # Heroine hair & silhouette
+        d.ellipse([11, 18, 37, 46], fill=(56, 38, 60, 255))
+        d.polygon([(9, 63), (14, 43), (34, 43), (39, 63)], fill=(66, 48, 76, 255))
+        # Red scarf & collar
+        d.polygon([(16, 43), (32, 43), (24, 52)], fill=(224, 82, 108, 255))
+        # Face, bangs, anime eyes & blush
+        d.ellipse([16, 24, 32, 42], fill=(255, 224, 204, 255))
+        d.polygon([(14, 25), (34, 25), (32, 31), (26, 28), (22, 32), (16, 28)], fill=(56, 38, 60, 255))
+        d.rectangle([19, 32, 21, 34], fill=(142, 66, 152, 255))
+        d.rectangle([27, 32, 29, 34], fill=(142, 66, 152, 255))
+        d.point((19, 32), fill=WHITE); d.point((27, 32), fill=WHITE)
+        d.rectangle([18, 36, 20, 36], fill=(248, 146, 166, 255))
+        d.rectangle([28, 36, 30, 36], fill=(248, 146, 166, 255))
+        # Title banner
+        d.rectangle([5, 5, 42, 11], fill=(255, 246, 232, 255))
+        d.rectangle([8, 7, 39, 9], fill=(116, 76, 148, 255))
+        d.rectangle([0, 0, 47, 65], outline=OUT, width=2)
     elif idx == 1:
-        # Magical-girl pink & gold star cosplay poster ("Shizuku-tan / Magical")
-        d.rectangle([0, 0, 47, 65], fill=(232, 142, 176, 255), outline=OUT, width=2)
-        d.rectangle([5, 5, 42, 11], fill=(255, 244, 178, 255))
-        d.ellipse([13, 18, 35, 40], fill=(116, 76, 168, 255))
-        d.ellipse([17, 22, 31, 36], fill=(255, 224, 206, 255))
-        d.polygon([(9, 63), (15, 40), (33, 40), (39, 63)], fill=(76, 60, 122, 255))
-        # Cute star motif
-        d.rectangle([34, 16, 38, 20], fill=(255, 244, 160, 255))
-        d.rectangle([8, 44, 12, 48], fill=(255, 244, 160, 255))
+        # Poster 1: Gothic-Violet & Rose Cosplay Silhouette ("Shizuku-tan" dress + crescent moon + stars)
+        for y in range(2, 64):
+            f = (y - 2) / 62.0
+            c = lerp_c((42, 26, 68, 255), (156, 68, 118, 255), f)
+            d.line([(2, y), (45, y)], fill=c)
+        # Crescent moon & golden sparkles
+        d.ellipse([26, 12, 42, 28], fill=(255, 242, 178, 255))
+        d.ellipse([29, 10, 44, 25], fill=(64, 34, 82, 255))
+        for sx, sy in ((8, 18), (12, 28), (38, 34), (9, 46), (40, 50)):
+            d.rectangle([sx, sy, sx + 1, sy + 1], fill=(255, 244, 176, 255))
+        # Frilly gothic cosplay silhouette + ribbon bow
+        d.ellipse([17, 22, 31, 36], fill=(28, 18, 42, 255))
+        d.polygon([(14, 40), (34, 40), (41, 63), (7, 63)], fill=(28, 18, 42, 255))
+        d.polygon([(18, 36), (30, 36), (34, 46), (14, 46)], fill=(48, 30, 72, 255))
+        # Lace hem & rose ribbon
+        for rx in range(9, 40, 4):
+            d.ellipse([rx, 59, rx + 3, 62], fill=(244, 184, 212, 255))
+        d.rectangle([21, 39, 27, 42], fill=(238, 92, 134, 255))
+        # Ornate gold title strip
+        d.rectangle([5, 5, 42, 10], fill=(255, 224, 134, 255))
+        d.rectangle([9, 7, 38, 8], fill=(72, 32, 78, 255))
+        d.rectangle([0, 0, 47, 65], outline=OUT, width=2)
     else:
-        # Neon cyan/magenta cyberpunk anime poster
-        d.rectangle([0, 0, 47, 65], fill=(38, 46, 86, 255), outline=OUT, width=2)
-        d.rectangle([5, 6, 42, 10], fill=(104, 236, 232, 255))
-        d.ellipse([12, 18, 36, 42], fill=(236, 84, 148, 255))
-        d.ellipse([17, 23, 31, 37], fill=(255, 224, 206, 255))
-        d.rectangle([17, 27, 31, 30], fill=(104, 236, 232, 255))  # neon visor!
-        d.polygon([(11, 63), (16, 42), (32, 42), (37, 63)], fill=(54, 184, 196, 255))
+        # Poster 2: Deep-Space Cosmos & Cyberpunk Neon Skyline
+        for y in range(2, 64):
+            f = (y - 2) / 62.0
+            c = lerp_c((16, 18, 48, 255), (72, 34, 98, 255), f) if f < 0.65 else lerp_c((72, 34, 98, 255), (224, 88, 146, 255), (f - 0.65) / 0.35)
+            d.line([(2, y), (45, y)], fill=c)
+        # Starfield
+        for sx, sy in ((6, 12), (14, 8), (38, 10), (41, 22), (8, 28), (34, 32), (18, 36)):
+            d.point((sx, sy), fill=(255, 252, 226, 255))
+        # Ringed planet (Saturn-style cosmos!)
+        d.ellipse([16, 14, 34, 32], fill=(116, 218, 232, 255))
+        d.pieslice([16, 14, 34, 32], 20, 200, fill=(68, 134, 182, 255))
+        d.arc([8, 19, 42, 29], 340, 200, fill=(255, 206, 142, 255), width=2)
+        # Cyberpunk neon skyline silhouette
+        buildings = [(3, 46, 10), (11, 41, 18), (19, 48, 26), (27, 39, 35), (36, 45, 45)]
+        for bx0, by0, bx1 in buildings:
+            d.rectangle([bx0, by0, bx1, 63], fill=(24, 20, 44, 255))
+            for wy in range(by0 + 3, 60, 4):
+                d.rectangle([bx0 + 2, wy, bx1 - 2, wy + 1], fill=(104, 242, 236, 255))
+        d.rectangle([5, 5, 42, 8], fill=(104, 242, 236, 255))
+        d.rectangle([0, 0, 47, 65], outline=OUT, width=2)
     return img
 
 
@@ -1280,25 +1467,165 @@ def build_sky_patch(mode):
     return img
 
 
+def build_fairy_lights(on=False):
+    """Hanging catenary fairy-light strand (240x40) for upper-right wall over bed."""
+    img = Image.new("RGBA", (240, 40), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    wire = (72, 54, 62, 255)
+    # Two graceful catenary swags along the wall
+    pts1 = bezier((4, 6), (62, 30), (120, 8), 24)
+    pts2 = bezier((120, 8), (178, 30), (236, 6), 24)
+    all_pts = pts1 + pts2[1:]
+    for i in range(len(all_pts) - 1):
+        d.line([all_pts[i], all_pts[i + 1]], fill=wire, width=1)
+    # 11 cute hanging bulbs along the wire
+    bulb_indices = [3, 8, 13, 18, 23, 28, 33, 38, 43]
+    for bi, idx in enumerate(bulb_indices):
+        bx, by = all_pts[idx]
+        d.rectangle([bx - 1, by, bx + 1, by + 2], fill=wire)
+        if on:
+            col = (255, 240, 178, 255) if bi % 2 == 0 else (255, 198, 218, 255)
+            d.ellipse([bx - 2, by + 2, bx + 2, by + 6], fill=col)
+            d.point((bx, by + 3), fill=WHITE)
+        else:
+            d.ellipse([bx - 2, by + 2, bx + 2, by + 6], fill=(168, 158, 166, 255), outline=wire)
+    return img
+
+
+def build_item_gift():
+    """Draggable pastel-pink candy/gift box with golden ribbon (24x22) for nightstand drawer."""
+    img = Image.new("RGBA", (24, 22), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    # Box body & lid
+    d.rounded_rectangle([3, 7, 20, 19], radius=2, fill=(248, 146, 178, 255))
+    d.rectangle([2, 5, 21, 9], fill=(255, 176, 200, 255))
+    # Golden vertical & horizontal ribbons
+    d.rectangle([10, 5, 13, 19], fill=GOLD)
+    d.rectangle([3, 12, 20, 14], fill=GOLD)
+    # Cute bow loops on top
+    d.ellipse([6, 1, 11, 6], fill=GOLD)
+    d.ellipse([12, 1, 17, 6], fill=GOLD)
+    d.rectangle([10, 3, 13, 5], fill=WHITE)
+    return sel_out(img)
+
+
+BAYER4 = np.array([
+    [0,  8,  2, 10],
+    [12, 4, 14,  6],
+    [3, 11,  1,  9],
+    [15, 7, 13,  5],
+], dtype=np.float32) / 16.0
+
+
+def build_dithered_halo(size, rgb, max_alpha=110, levels=5):
+    """Crisp 16-bit Bayer-dithered circular halo sprite (no flat smooth-circle look!)."""
+    y, x = np.ogrid[:size, :size]
+    c = (size - 1) * 0.5
+    dist = np.sqrt((x - c) ** 2 + (y - c) ** 2)
+    f = np.clip(1.0 - dist / (size * 0.5), 0.0, 1.0) ** 1.5
+    bayer = np.tile(BAYER4, (size // 4 + 1, size // 4 + 1))[:size, :size]
+    q = f * levels
+    lvl = np.floor(q) + ((q - np.floor(q)) > bayer).astype(np.float32)
+    a = np.clip((lvl / levels) * max_alpha, 0, 255).astype(np.uint8)
+    arr = np.zeros((size, size, 4), dtype=np.uint8)
+    arr[:, :, 0] = rgb[0]
+    arr[:, :, 1] = rgb[1]
+    arr[:, :, 2] = rgb[2]
+    arr[:, :, 3] = a
+    return Image.fromarray(arr, "RGBA")
+
+
 def build_night_lamp_glow():
-    return make_lamp_glow((606, 162), 290)
+    """16-bit Bayer-dithered warm lamp glow + warm floor & wall reflection bounce!"""
+    y, x = np.ogrid[:VH, :VW]
+    bayer = np.tile(BAYER4, (VH // 4 + 1, VW // 4 + 1))[:VH, :VW]
+    # Primary lamp halo
+    d1 = np.sqrt((x - 606) ** 2 + ((y - 162) * 1.1) ** 2)
+    f1 = np.clip(1.0 - d1 / 280.0, 0.0, 1.0) ** 1.75
+    # Warm bounce reflection on the wooden floor & lower wall right next to the nightstand
+    d2 = np.sqrt(((x - 560) * 0.85) ** 2 + ((y - 296) * 1.65) ** 2)
+    f2 = np.clip(1.0 - d2 / 140.0, 0.0, 1.0) ** 1.8 * 0.48
+    f = np.clip(f1 + f2, 0.0, 1.0)
+
+    levels = 8.0
+    q = f * levels
+    lvl = np.floor(q) + ((q - np.floor(q)) > bayer).astype(np.float32)
+    v = lvl / levels
+    arr = np.zeros((VH, VW, 4), dtype=np.uint8)
+    arr[:, :, 0] = 255
+    arr[:, :, 1] = np.clip(196 + 44 * v, 0, 255).astype(np.uint8)
+    arr[:, :, 2] = np.clip(108 + 64 * v, 0, 255).astype(np.uint8)
+    arr[:, :, 3] = np.clip(v * 168.0, 0, 255).astype(np.uint8)
+    return Image.fromarray(arr, "RGBA")
+
+
+def build_clean_sky(mode):
+    """Pure gradient sky (108x100) without baked clouds/stars so live clouds & shooting stars animate cleanly."""
+    img = Image.new("RGBA", (108, 100), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    if mode == 0:
+        top, bot = (102, 172, 242, 255), (190, 228, 255, 255)
+        for y in range(100):
+            d.line([(0, y), (107, y)], fill=lerp_c(top, bot, y / 99.0)[:3])
+    elif mode == 1:
+        top, mid, bot = (78, 56, 134, 255), (232, 114, 118, 255), (255, 182, 108, 255)
+        for y in range(100):
+            f = y / 99.0
+            c = lerp_c(top, mid, f * 2) if f < 0.5 else lerp_c(mid, bot, (f - 0.5) * 2)
+            d.line([(0, y), (107, y)], fill=c[:3])
+        d.ellipse([56, 72, 88, 104], fill=(255, 228, 144))
+        d.rectangle([0, 90, 108, 100], fill=(134, 72, 106))
+    elif mode == 2:
+        top, bot = (14, 18, 48, 255), (42, 42, 88, 255)
+        for y in range(100):
+            d.line([(0, y), (107, y)], fill=lerp_c(top, bot, y / 99.0)[:3])
+        d.ellipse([72, 14, 92, 34], fill=(252, 246, 206))
+        d.ellipse([77, 11, 95, 29], fill=(20, 22, 54))
+    else:
+        top, mid, bot = (86, 48, 108, 255), (214, 104, 148, 255), (255, 192, 164, 255)
+        for y in range(100):
+            f = y / 99.0
+            c = lerp_c(top, mid, f * 2) if f < 0.5 else lerp_c(mid, bot, (f - 0.5) * 2)
+            d.line([(0, y), (107, y)], fill=c[:3])
+    return img
+
+
+def build_window_mullions():
+    """Crisp window mullions overlay (108x100) drawn ABOVE live drifting clouds & shooting stars."""
+    img = Image.new("RGBA", (108, 100), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    d.rectangle([52, 0, 56, 100], fill=(230, 220, 206, 255))
+    d.rectangle([0, 48, 108, 52], fill=(230, 220, 206, 255))
+    d.rectangle([52, 0, 53, 100], fill=(186, 172, 156, 255))
+    d.rectangle([0, 51, 108, 52], fill=(186, 172, 156, 255))
+    return img
 
 
 def generate_all():
-    for outfit in (0, 1, 2, 3):
-        build_legs(outfit, air=False).save(os.path.join(ASSETS, f"legs_{outfit}_stand.png"))
-        build_legs(outfit, air=True).save(os.path.join(ASSETS, f"legs_{outfit}_air.png"))
+    for outfit in (0, 1, 2, 3, 4):
+        build_legs(outfit, "stand").save(os.path.join(ASSETS, f"legs_{outfit}_stand.png"))
+        build_legs(outfit, "air").save(os.path.join(ASSETS, f"legs_{outfit}_air.png"))
+        build_legs(outfit, "sit").save(os.path.join(ASSETS, f"legs_{outfit}_sit.png"))
         build_lower_garment(outfit).save(os.path.join(ASSETS, f"skirt_{outfit}.png"))
-        build_torso(outfit).save(os.path.join(ASSETS, f"torso_{outfit}.png"))
+        build_torso(outfit, False).save(os.path.join(ASSETS, f"torso_{outfit}.png"))
         build_shirt_folds(outfit).save(os.path.join(ASSETS, f"folds_{outfit}.png"))
         build_arm(outfit, -1, "idle").save(os.path.join(ASSETS, f"arm_l_{outfit}.png"))
         build_arm(outfit, 1, "idle").save(os.path.join(ASSETS, f"arm_r_{outfit}.png"))
         build_arm(outfit, 1, "wave").save(os.path.join(ASSETS, f"arm_r_{outfit}_wave.png"))
+        build_arm(outfit, 1, "collar").save(os.path.join(ASSETS, f"arm_r_{outfit}_collar.png"))
+        build_arm(outfit, 1, "phone").save(os.path.join(ASSETS, f"arm_r_{outfit}_phone.png"))
 
-    build_tie().save(os.path.join(ASSETS, "tie.png"))
+    # Relaxed undone-top-button variants for School (0) & Canon Relaxed Shirt (4)
+    build_torso(0, True).save(os.path.join(ASSETS, "torso_0_relaxed.png"))
+    build_torso(4, True).save(os.path.join(ASSETS, "torso_4_relaxed.png"))
+    build_tie(False).save(os.path.join(ASSETS, "tie.png"))
+    build_tie(True).save(os.path.join(ASSETS, "tie_0_relaxed.png"))
+    build_tie_loose(False).save(os.path.join(ASSETS, "tie_loose.png"))
+    build_tie_loose(True).save(os.path.join(ASSETS, "tie_4_relaxed.png"))
+
     build_head_base().save(os.path.join(ASSETS, "head_base.png"))
     build_iris().save(os.path.join(ASSETS, "iris.png"))
-    for emo in ("normal", "pet", "blush", "smug", "surprised", "sleepy", "pout", "starry", "blink"):
+    for emo in ("normal", "pet", "blush", "smug", "surprised", "sleepy", "pout", "starry", "romantic", "flustered", "blink"):
         build_face(emo).save(os.path.join(ASSETS, f"face_{emo}.png"))
 
     build_acc_glasses().save(os.path.join(ASSETS, "acc_glasses.png"))
@@ -1313,6 +1640,11 @@ def generate_all():
     build_boba().save(os.path.join(ASSETS, "boba.png"))
     build_item_glasses().save(os.path.join(ASSETS, "item_glasses.png"))
     build_item_camera().save(os.path.join(ASSETS, "item_camera.png"))
+    build_item_gift().save(os.path.join(ASSETS, "item_gift.png"))
+    build_fairy_lights(False).save(os.path.join(ASSETS, "fairy_off.png"))
+    build_fairy_lights(True).save(os.path.join(ASSETS, "fairy_on.png"))
+    build_dithered_halo(32, (255, 228, 148), max_alpha=115, levels=5).save(os.path.join(ASSETS, "fairy_halo_gold.png"))
+    build_dithered_halo(32, (255, 172, 206), max_alpha=115, levels=5).save(os.path.join(ASSETS, "fairy_halo_pink.png"))
     build_curtain_panel(86, 132).save(os.path.join(ASSETS, "curtain_panel.png"))
     for i in range(3):
         build_poster(i).save(os.path.join(ASSETS, f"poster_{i}.png"))
@@ -1322,13 +1654,13 @@ def generate_all():
     for kind in ("rock", "paper", "scissors"):
         build_rps_icon(kind).save(os.path.join(ASSETS, f"rps_{kind}.png"))
 
-    # Neutral base room + standalone sky patches for buttery-smooth lighting lerp!
     build_room(0, False).save(os.path.join(ASSETS, "room_base.png"))
     build_room(0, True).save(os.path.join(ASSETS, "room_base_open.png"))
-    for mode, name in ((0, "day"), (1, "sunset"), (2, "night")):
-        build_sky_patch(mode).save(os.path.join(ASSETS, f"sky_{name}.png"))
+    for mode, name in ((0, "day"), (1, "sunset"), (2, "night"), (3, "romantic")):
+        build_clean_sky(mode).save(os.path.join(ASSETS, f"sky_{name}.png"))
+    build_window_mullions().save(os.path.join(ASSETS, "window_frame.png"))
 
-    print("Generated v0.2-beta assets (4 outfits, 2 accessories, camera/glasses, RPS, lerp skies) in", ASSETS)
+    print("Generated v0.4-beta assets (5 outfits + relaxed collar, sitting/phone, dithered halos, detailed posters) in", ASSETS)
 
 
 if __name__ == "__main__":
