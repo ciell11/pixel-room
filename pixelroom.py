@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Pixel Room — Marin Kitagawa (v0.5-beta: Alive, Cute & Chat Update)."""
+"""Pixel Room — Marin Kitagawa (v0.6-beta: Marin Art Overhaul)."""
 import os
 import sys
 import math
@@ -387,9 +387,9 @@ class Game:
             self.phys.go_to_activity("stretch")
         elif act == "wave":
             self.phys.wave_t = 1.9
-        elif act == "collar_relax" and self.outfit in (0, 1, 4):
+        elif act == "collar_relax":
             self.phys.start_collar_anim(True)
-        elif act == "collar_button" and self.outfit in (0, 1, 4):
+        elif act == "collar_button":
             self.phys.start_collar_anim(False)
         elif act == "throw_pillow":
             pl = self.room.pillow
@@ -1238,9 +1238,9 @@ class Game:
             self.say("ai_attention")
             self.particles.spawn("heart", self.phys.rx, py_top, 2)
 
-        # Autonomous Canon Top-Button Collar Relaxation (Outfits 0, 1 Home Shirt & 4 Canon Shirt!)
+        # Autonomous Canon Collar Relaxation across outfits
         self.collar_check_cd = max(0.0, self.collar_check_cd - dt)
-        if (self.outfit in (0, 1, 4) and self.phys.collar_seq_phase == 0
+        if (self.outfit in (0, 1, 2, 3, 4) and self.phys.collar_seq_phase == 0
                 and not interacting and not self.phys.air and not self.room.is_pitch_dark()):
             if (not self.collar_relaxed and self.aff_lvl >= 4 and self.mood >= 80.0
                     and self.tease_score < 2.0 and self.collar_check_cd <= 0):

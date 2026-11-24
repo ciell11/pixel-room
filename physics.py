@@ -657,7 +657,7 @@ class CharacterPhysics:
         return 1.0 - 0.28 * math.sin(clamp(p, 0.0, 1.0) * math.pi)
 
     def compose(self, assets, outfit, accessory, emotion, dragging, grab_part, collar_relaxed=False):
-        """Composite all character layers with cute face, relaxed outfits (0/1/4), floor-sit manga & stretches."""
+        """Composite all character layers with v0.6 Marin Art Overhaul sprites, all 5 relaxed outfits & wink."""
         comp = self.comp
         comp.fill((0, 0, 0, 0))
         fy = self.floor_sit_y
@@ -667,7 +667,7 @@ class CharacterPhysics:
         wx = self.weight_shift_x
         is_sit = self.sitting and not dragging and not self.air
         is_floor = (fy > 16.0) and not dragging and not self.air and not is_sit
-        use_relaxed = collar_relaxed and outfit in (0, 1, 4)
+        use_relaxed = bool(collar_relaxed)
         collar_hands = (self.collar_seq_phase in (1, 2) and grab_part not in ("armL", "armR"))
         stretch_hands = ((self.stretch_t > 0 or self.collar_seq_phase == 3) and grab_part not in ("armL", "armR")
                          and not is_floor and self.wave_t <= 0)
@@ -732,26 +732,13 @@ class CharacterPhysics:
         elif outfit == 4:
             draw_spring(assets["tie_4_relaxed" if use_relaxed else "tie_loose"], "tie", extra_y=by)
 
-        # Layer 6: Arms (multi-phase collar / stretch / wave / floor-manga / phone / spring)
-        if collar_hands:
-            tug = math.sin(self.t * 16.0) * (5.5 if self.collar_seq_phase == 2 else 2.0)
-            blit_pivoted(comp, assets[f"arm_l_{outfit}_collar"], PIVOTS["armL"], dp("armL", 0, by), angle=-tug)
-            blit_pivoted(comp, assets[f"arm_r_{outfit}_collar"], PIVOTS["armR"], dp("armR", 0, by), angle=tug)
-        elif stretch_hands:
-            sw = math.sin(self.t * 3.5) * 4.5
-            blit_pivoted(comp, assets[f"arm_l_{outfit}_stretch"], PIVOTS["armL"], dp("armL", 0, by), angle=-sw)
-            blit_pivoted(comp, assets[f"arm_r_{outfit}_stretch"], PIVOTS["armR"], dp("armR", 0, by), angle=sw)
-        elif holding_manga:
-            # Reading arms + open manga are drawn cleanly in foreground AFTER hair so hands visibly grip the book!
+        # Layer 6: Idle background arms (foreground action arms are drawn after front hair so hands are never covered!)
+        if collar_hands or stretch_hands or holding_manga:
             pass
         else:
             draw_spring(assets[f"arm_l_{outfit}"], "armL", extra_y=by)
-            if self.wave_t > 0 and grab_part != "armR":
-                wob = math.sin(self.t * 15) * 14.0
-                blit_pivoted(comp, assets[f"arm_r_{outfit}_wave"], PIVOTS["armR"], dp("armR", 0, by), angle=wob)
-            elif holding_phone:
-                bob_p = math.sin(self.t * 2.6) * 1.4
-                blit_pivoted(comp, assets[f"arm_r_{outfit}_phone"], PIVOTS["armR"], dp("armR", 0, by), angle=bob_p)
+            if (self.wave_t > 0 and grab_part != "armR") or holding_phone:
+                pass
             else:
                 draw_spring(assets[f"arm_r_{outfit}"], "armR", extra_y=by)
 
@@ -772,7 +759,8 @@ class CharacterPhysics:
                 py = int(round(self.pup[1]))
                 if emotion in ("blush", "flustered"):
                     px = -1 if self.pup[0] >= 0 else 1
-                hc.blit(iris, (OX - 8 - iw + px, OY - 154 - ih + py))
+                if emotion != "blush":
+                    hc.blit(iris, (OX - 8 - iw + px, OY - 154 - ih + py))
                 hc.blit(iris, (OX + 8 - iw + px, OY - 154 - ih + py))
 
         if accessory == 1:
@@ -789,13 +777,27 @@ class CharacterPhysics:
         if accessory == 2:
             blit_pivoted(comp, assets["acc_ears"], PIVOTS["head"], dp("head", hx, hy), angle=h_ang, sx=hsx, sy=hsy)
 
-        # Draw open pixel manga book AND bent reading arms gripping its sides cleanly in front!
-        if holding_manga:
+        # Foreground active gesture arms (collar, stretch, wave, smartphone & open manga) cleanly in front!
+        if collar_hands:
+            tug = math.sin(self.t * 16.0) * (5.5 if self.collar_seq_phase == 2 else 2.0)
+            blit_pivoted(comp, assets[f"arm_l_{outfit}_collar"], PIVOTS["armL"], dp("armL", 0, by), angle=-tug)
+            blit_pivoted(comp, assets[f"arm_r_{outfit}_collar"], PIVOTS["armR"], dp("armR", 0, by), angle=tug)
+        elif stretch_hands:
+            sw = math.sin(self.t * 3.5) * 4.5
+            blit_pivoted(comp, assets[f"arm_l_{outfit}_stretch"], PIVOTS["armL"], dp("armL", 0, by), angle=-sw)
+            blit_pivoted(comp, assets[f"arm_r_{outfit}_stretch"], PIVOTS["armR"], dp("armR", 0, by), angle=sw)
+        elif holding_manga:
             m_img = assets["manga_open_flip" if self.manga_turn_t > 0.10 else "manga_open"]
             comp.blit(m_img, (int(COX - 16 + wx), int(COY - 109 + by)))
             blit_pivoted(comp, assets[f"arm_l_{outfit}_manga"], PIVOTS["armL"], dp("armL", 0, by), angle=0.0)
             r_key = f"arm_r_{outfit}_manga_turn" if self.manga_turn_t > 0.10 else f"arm_r_{outfit}_manga"
             blit_pivoted(comp, assets[r_key], PIVOTS["armR"], dp("armR", 0, by), angle=0.0)
+        elif self.wave_t > 0 and grab_part != "armR":
+            wob = math.sin(self.t * 15) * 14.0
+            blit_pivoted(comp, assets[f"arm_r_{outfit}_wave"], PIVOTS["armR"], dp("armR", 0, by), angle=wob)
+        elif holding_phone:
+            bob_p = math.sin(self.t * 2.6) * 1.4
+            blit_pivoted(comp, assets[f"arm_r_{outfit}_phone"], PIVOTS["armR"], dp("armR", 0, by), angle=bob_p)
 
         self.mask = pygame.mask.from_surface(comp)
         return comp

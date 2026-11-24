@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-"""Shared constants, palettes, pivots, Affinity thresholds, and dialog lines for Pixel Room v0.4-beta."""
+"""Shared constants, palettes, pivots, Affinity thresholds, and dialog lines for Pixel Room v0.6-beta."""
 import os
 import sys
 
-VERSION = "v0.5.2-beta"
+VERSION = "v0.6-beta"
 VW, VH = 640, 360
 FLOOR_Y = 336
-BED_SIT_POS = (446.0, 294.0)
+BED_SIT_POS = (446.0, 286.0)
 SR = 22050
 
 CW, CH, OX, OY = 160, 220, 80, 210
@@ -60,15 +60,15 @@ def affinity_level(xp):
 
 PIVOTS = {
     "head":  (OX,      OY - 138),
-    "bangs": (OX,      OY - 184),
-    "hairL": (OX - 14, OY - 174),
-    "hairR": (OX + 14, OY - 174),
-    "hairB": (OX,      OY - 178),
+    "bangs": (OX,      OY - 180),
+    "hairL": (OX - 13, OY - 172),
+    "hairR": (OX + 13, OY - 172),
+    "hairB": (OX,      OY - 176),
     "tie":   (OX,      OY - 125),
     "folds": (OX,      OY - 114),
     "skirt": (OX,      OY - 93),
-    "armL":  (OX - 14, OY - 126),
-    "armR":  (OX + 14, OY - 126),
+    "armL":  (OX - 12, OY - 127),
+    "armR":  (OX + 12, OY - 127),
 }
 
 LINES = {
