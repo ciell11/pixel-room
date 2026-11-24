@@ -1,4 +1,4 @@
-"""Build PixelRoom.exe (single file, windowed, 640x360 high-bit assets bundled).
+"""Build PixelRoom.exe v0.2-beta (single file, windowed, modular sources + assets bundled).
 Run: py build.py
 """
 import os
@@ -12,14 +12,15 @@ import pygame
 here = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, here)
 import generate_assets
-import pixelroom as pr
+from constants import PINK, WHITE
+from ui_manager import pattern_surface, HEART_P
 
-# Ensure high-bit PNG assets are fresh
+# Ensure all v0.2-beta high-bit PNG assets are fresh
 generate_assets.generate_all()
 
 # Make icon.ico (PNG-in-ICO) from the pixel heart
 pygame.init()
-img = pygame.transform.scale(pr.pattern_surface(pr.HEART_P, {"#": pr.PINK, "+": pr.WHITE}, scale=4), (64, 64))
+img = pygame.transform.scale(pattern_surface(HEART_P, {"#": PINK, "+": WHITE}, scale=4), (64, 64))
 png = os.path.join(here, "icon.png")
 pygame.image.save(img, png)
 data = open(png, "rb").read()
@@ -34,10 +35,11 @@ subprocess.check_call([
     "--noconfirm", "--clean", "--onefile", "--windowed",
     "--name", "PixelRoom",
     "--icon", "icon.ico",
+    "--paths", here,
     "--add-data", "assets;assets",
     "--exclude-module", "numpy",
     "--exclude-module", "PIL",
     "--exclude-module", "tkinter",
     "pixelroom.py",
 ], cwd=here)
-print("Built:", os.path.join(here, "dist", "PixelRoom.exe"))
+print("Built v0.2-beta:", os.path.join(here, "dist", "PixelRoom.exe"))

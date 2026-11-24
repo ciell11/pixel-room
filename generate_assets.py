@@ -69,6 +69,16 @@ SNEAK_HI = (255, 252, 252, 255)
 SNEAK    = (232, 144, 174, 255)
 SNEAK_SH = (182, 96, 130, 255)
 
+# Outfit 3: Summer Casual (mint cropped top + blue denim shorts + white sneakers)
+MINT_HI  = (204, 248, 232, 255)
+MINT     = (148, 224, 202, 255)
+MINT_SH  = (106, 184, 166, 255)
+DENIM_HI = (118, 158, 206, 255)
+DENIM    = (78, 118, 172, 255)
+DENIM_SH = (52, 82, 132, 255)
+BELT     = (124, 78, 56, 255)
+GOLD     = (244, 208, 108, 255)
+
 CHOKER   = (30, 26, 36, 255)
 SILVER   = (224, 228, 240, 255)
 SILVER_D = (146, 152, 168, 255)
@@ -242,7 +252,7 @@ def build_legs(outfit, air=False):
             rect(d, -9, -5, 6, 2, SLIP_HI)
             poly(d, [(6, -5), (13.5, -5), (16, -1), (15, 1), (6, 1), (5.5, -2)], SLIP)
             rect(d, 7, -4, 6, 2, SLIP_HI)
-        else:
+        elif outfit == 2:
             # Outfit 2 (Hoodie): Thigh-high dark socks with white stripes + pastel sneakers
             poly(d, [(-11.5, -46), (-10.5, -36), (-11, -24), (-8.5, -12), (-8, -5),
                      (-2, -5), (-2.5, -14), (-3.5, -26), (-3.5, -38), (-2.5, -46)], SOCK)
@@ -252,13 +262,21 @@ def build_legs(outfit, air=False):
                      (6.5, -4), (6.5, -13), (6, -25), (5, -37), (4, -45)], SOCK)
             line(d, (4, -42), (12.5, -42), WHITE, 1)
             line(d, (4.5, -39), (12.5, -39), WHITE, 1)
-            # Chunky cozy sneakers
             poly(d, [(-9.5, -8), (-11.5, -2), (-10.5, 0), (-1, 0), (-1, -3), (-2, -8)], SNEAK)
             rect(d, -10, -2, 9, 2, SNEAK_HI)
             poly(d, [(5.5, -7), (14, -7), (16.5, -2), (15.5, 1), (5.5, 1), (5, -2)], SNEAK)
             rect(d, 6, -1, 10, 2, SNEAK_HI)
+        else:
+            # Outfit 3 (Summer Casual): Low white ankle socks + crisp white & mint sneakers
+            poly(d, [(-9, -13), (-8, -5), (-2, -5), (-2.5, -13)], WHITE)
+            poly(d, [(13.5, -12), (13, -4), (6.5, -4), (6.5, -12)], WHITE)
+            poly(d, [(-9.5, -7), (-11.5, -2), (-10.5, 0), (-1, 0), (-1, -3), (-2, -7)], WHITE)
+            rect(d, -10, -5, 8, 2, MINT)
+            rect(d, -10, -2, 9, 2, SHIRT_SH)
+            poly(d, [(5.5, -6), (14, -6), (16.5, -2), (15.5, 1), (5.5, 1), (5, -2)], WHITE)
+            rect(d, 6, -4, 9, 2, MINT)
+            rect(d, 6, -1, 10, 2, SHIRT_SH)
     else:
-        # Gently bent/tucked legs when picked up or tossed in the air
         for side in (-1, 1):
             s = side
             thigh = [(s * 12, -74), (s * 15, -52), (s * 13, -42), (s * 4, -44), (s * 2, -62), (s * 2, -74)]
@@ -273,16 +291,20 @@ def build_legs(outfit, air=False):
             elif outfit == 1:
                 poly(d, [(s * 10, -14), (s * 11, -8), (s * 8, -6), (s * 2, -7), (s * 2.5, -14)], SLIP)
                 rect(d, min(s * 9, s * 3), -12, 5, 2, SLIP_HI)
-            else:
+            elif outfit == 2:
                 poly(d, [(s * 13.5, -44), (s * 11, -22), (s * 9, -12), (s * 2.5, -13), (s * 4.5, -30), (s * 5.5, -44)], SOCK)
                 poly(d, [(s * 10, -14), (s * 11.5, -8), (s * 8.5, -6), (s * 2, -7), (s * 2.5, -14)], SNEAK)
                 rect(d, min(s * 9, s * 3), -8, 6, 2, SNEAK_HI)
+            else:
+                poly(d, [(s * 10, -17), (s * 9, -12), (s * 2.5, -13), (s * 3.5, -18)], WHITE)
+                poly(d, [(s * 10, -14), (s * 11.5, -8), (s * 8.5, -6), (s * 2, -7), (s * 2.5, -14)], WHITE)
+                rect(d, min(s * 9, s * 3), -11, 6, 2, MINT)
 
     return sel_out(img)
 
 
 def build_lower_garment(outfit):
-    """Layer 1: Pleated short navy skirt or home shorts (rotates & squashes around waist pivot)."""
+    """Layer 1: Pleated skirt (0), Home shorts (1), Hoodie hem (2), Blue denim shorts (3)."""
     img = new_char()
     d = ImageDraw.Draw(img)
     if outfit == 0:
@@ -305,16 +327,27 @@ def build_lower_garment(outfit):
         line(d, (10, -87), (12, -73), HOME_BOT_SH, 2)
         rect(d, -16, -73, 13, 2, HOME_BOT_SH)
         rect(d, 3, -73, 13, 2, HOME_BOT_SH)
-    else:
-        # Outfit 2: Oversized hoodie ribbed bottom hem + dark shorts peeking slightly below
+    elif outfit == 2:
         poly(d, [(-15, -77), (15, -77), (16, -70), (3, -70), (0, -73), (-3, -70), (-16, -70)], HOME_BOT)
         poly(d, [(-18, -94), (18, -94), (19, -76), (-19, -76)], HOOD)
         rect(d, -18, -81, 36, 5, HOOD_SH)
         for rx in range(-15, 16, 4):
             line(d, (rx, -81), (rx, -76), HOOD_D, 1)
-        # Kangaroo pocket
         poly(d, [(-11, -93), (11, -93), (13, -82), (-13, -82)], HOOD_SH)
         poly(d, [(-10, -92), (10, -92), (11, -83), (-11, -83)], HOOD)
+    else:
+        # Outfit 3: Stylish blue denim shorts with brown leather belt & gold buckle
+        pts = [(-12, -94), (12, -94), (16, -70), (3, -70), (0, -75), (-3, -70), (-16, -70)]
+        poly(d, pts, DENIM)
+        # Denim fade highlights & cuff folds
+        poly(d, [(-11, -88), (-4, -88), (-5, -74), (-13, -74)], DENIM_HI)
+        poly(d, [(4, -88), (11, -88), (13, -74), (5, -74)], DENIM_HI)
+        line(d, (0, -90), (0, -75), DENIM_SH, 1)
+        rect(d, -16, -73, 13, 3, DENIM_SH)
+        rect(d, 3, -73, 13, 3, DENIM_SH)
+        # Brown belt + gold buckle
+        rect(d, -12, -94, 24, 3, BELT)
+        rect(d, -2, -94, 4, 3, GOLD)
     return sel_out(img)
 
 
@@ -383,7 +416,7 @@ def build_torso(outfit):
         ell(d, -3, -95, 6, 4, SHIRT_HI)
         poly(d, [(-3, -91), (-8, -84), (-4, -83), (-1, -90)], SHIRT)
         poly(d, [(3, -91), (8, -84), (4, -83), (1, -90)], SHIRT_SH)
-    else:
+    elif outfit == 2:
         # Outfit 2: Oversized cozy pastel hoodie with plush collar & white drawstrings
         pts = [
             (-9, -134), (9, -134),
@@ -394,19 +427,38 @@ def build_torso(outfit):
         poly(d, [(10, -129), (17, -125), (18, -108), (17, -92), (11, -92), (12, -110)], HOOD_SH)
         poly(d, [(-17, -124), (-12, -124), (-12, -92), (-17, -92)], HOOD_SH)
         poly(d, [(-10, -122), (-2, -122), (-3, -100), (-10, -100)], HOOD_HI)
-        # Plush folded hood collar around neck
         ell(d, -11, -136, 22, 10, HOOD_SH)
         ell(d, -9, -135, 18, 7, HOOD_HI)
         poly(d, [(-4, -135), (4, -135), (0, -127)], SKIN)
-        # White drawstrings with cute tips
         line(d, (-3, -127), (-4, -110), WHITE, 1)
         line(d, (3, -127), (4, -112), WHITE, 1)
         rect(d, -5, -110, 2, 2, HOOD_D)
         rect(d, 3, -112, 2, 2, HOOD_D)
-        # Cute pixel star print on hoodie chest
         rect(d, -1, -111, 3, 3, WHITE)
         rect(d, 0, -113, 1, 7, WHITE)
         rect(d, -3, -110, 7, 1, WHITE)
+    else:
+        # Outfit 3: Summer Casual pastel mint fitted T-shirt with white collar trim & heart print
+        pts = [
+            (-5, -133), (5, -133),
+            (13, -128), (14, -120),
+            (12, -105), (11, -94),
+            (-11, -94), (-12, -105),
+            (-14, -120), (-13, -128)
+        ]
+        poly(d, pts, MINT)
+        poly(d, [(8, -128), (13, -126), (13, -116), (11, -94), (7, -94), (9, -112)], MINT_SH)
+        poly(d, [(-13, -122), (-10, -122), (-9, -94), (-11, -94)], MINT_SH)
+        poly(d, [(-9, -123), (-2, -123), (-3, -102), (-9, -102)], MINT_HI)
+        # Round summer crew neck with crisp white trim
+        ell(d, -6, -137, 12, 9, SKIN)
+        d.arc([OX - 6, OY - 137, OX + 6, OY - 128], 0, 180, fill=WHITE, width=2)
+        # Cute small coral heart graphic on front
+        rect(d, -2, -116, 2, 2, PINK)
+        rect(d, 1, -116, 2, 2, PINK)
+        rect(d, -2, -114, 5, 2, PINK)
+        rect(d, -1, -112, 3, 1, PINK)
+        rect(d, 0, -111, 1, 1, PINK)
 
     return sel_out(img)
 
@@ -436,15 +488,15 @@ def build_tie():
 
 
 def build_arm(outfit, side, pose="idle"):
-    """Layer 6: Graceful slender arms — supports School (0), Home (1), and Oversized Hoodie (2)."""
+    """Layer 6: Graceful slender arms — School (0), Home (1), Hoodie (2), Summer Tee (3)."""
     img = new_char()
     d = ImageDraw.Draw(img)
     hoodie = (outfit == 2)
+    summer = (outfit == 3)
     school = (outfit == 0)
 
     if pose == "idle":
         if hoodie:
-            # Cozy oversized long hoodie sleeves with fingers peeking out!
             if side == -1:
                 poly(d, [(-13, -128), (-20, -124), (-29, -82), (-20, -79), (-14, -110)], HOOD)
                 line(d, (-20, -122), (-28, -82), HOOD_SH, 2)
@@ -455,6 +507,21 @@ def build_arm(outfit, side, pose="idle"):
                 line(d, (20, -122), (28, -89), HOOD_SH, 2)
                 poly(d, [(15, -85), (22, -80), (20, -76), (14, -81)], HOOD_SH)
                 poly(d, [(15, -80), (19, -77), (18, -73), (14, -76)], SKIN)
+        elif summer:
+            # Short mint summer tee sleeves + graceful bare arms + cute pink bracelet!
+            if side == -1:
+                poly(d, [(-11, -128), (-17, -126), (-20, -114), (-14, -113), (-12, -118)], MINT)
+                line(d, (-20, -114), (-14, -113), WHITE, 1)
+                poly(d, [(-19, -113), (-14, -113), (-21, -82), (-25, -83)], SKIN)
+                line(d, (-18, -112), (-24, -83), SKIN_SH, 1)
+                poly(d, [(-25, -83), (-21, -82), (-20, -75), (-23, -73), (-26, -77)], SKIN)
+                line(d, (-24, -85), (-20, -84), PINK, 2)  # cute bracelet
+            else:
+                poly(d, [(11, -128), (17, -126), (21, -114), (15, -113), (12, -118)], MINT)
+                line(d, (15, -113), (21, -114), WHITE, 1)
+                poly(d, [(16, -113), (21, -113), (25, -90), (20, -82), (16, -84), (19, -91)], SKIN)
+                line(d, (20, -112), (24, -90), SKIN_SH, 1)
+                poly(d, [(16, -84), (20, -82), (19, -76), (15, -75), (14, -79)], SKIN)
         elif side == -1:
             sl_y = -104 if school else -99
             sleeve = [(-11, -128), (-17, -126), (-23, sl_y), (-15, sl_y + 2), (-12, -115)]
@@ -476,8 +543,8 @@ def build_arm(outfit, side, pose="idle"):
             line(d, (22, sl_y + 3), (24, -90), SKIN_SH, 1)
             poly(d, [(16, -84), (20, -82), (19, -76), (15, -75), (14, -79)], SKIN)
     elif pose == "wave":
-        c_main = HOOD if hoodie else SHIRT
-        c_hi = HOOD_HI if hoodie else SHIRT_HI
+        c_main = HOOD if hoodie else (MINT if summer else SHIRT)
+        c_hi = HOOD_HI if hoodie else (WHITE if summer else SHIRT_HI)
         sleeve = [(11, -128), (19, -130), (26, -141), (20, -147), (13, -137)]
         poly(d, sleeve, c_main)
         poly(d, [(19, -146), (26, -140), (28, -143), (22, -149)], c_hi)
@@ -1062,37 +1129,163 @@ def build_poster(idx):
     return img
 
 
-def build_drawer_open(item="glasses"):
-    """Open nightstand drawer sprite (64x36) with a cute hidden item inside!"""
+def build_drawer_open():
+    """Empty pulled-out nightstand drawer (64x36); draggable items sit dynamically inside!"""
     OUT = (54, 36, 44, 255)
     img = Image.new("RGBA", (64, 36), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
-    # Recessed dark interior
-    d.rectangle([4, 2, 58, 16], fill=(64, 38, 28, 255), outline=OUT, width=1)
-    if item == "glasses":
-        # Cute red-framed cosplay glasses inside top drawer
-        d.rectangle([14, 6, 26, 13], fill=(214, 238, 252, 255), outline=(216, 68, 86, 255), width=2)
-        d.rectangle([32, 6, 44, 13], fill=(214, 238, 252, 255), outline=(216, 68, 86, 255), width=2)
-        d.line([(26, 9), (32, 9)], fill=(216, 68, 86, 255), width=2)
-    else:
-        # Colorful cosplay magazine inside bottom drawer
-        d.rectangle([12, 5, 48, 15], fill=(246, 168, 196, 255), outline=OUT, width=1)
-        d.rectangle([16, 7, 30, 13], fill=(255, 242, 164, 255))
-        d.rectangle([34, 8, 44, 12], fill=(120, 206, 240, 255))
-    # Pulled-out wooden drawer front
+    d.rectangle([4, 2, 58, 16], fill=(58, 34, 26, 255), outline=OUT, width=1)
+    d.rectangle([6, 4, 56, 14], fill=(74, 46, 34, 255))
     d.rectangle([0, 14, 62, 35], fill=(166, 106, 70, 255), outline=OUT, width=2)
     d.line([(2, 16), (60, 16)], fill=(196, 134, 92, 255), width=2)
     d.rectangle([26, 22, 36, 27], fill=(214, 218, 230, 255), outline=OUT, width=1)
     return img
 
 
+def build_acc_glasses():
+    """Wearable stylish red-framed cosplay glasses on head canvas (CW, CH)."""
+    img = new_char()
+    d = ImageDraw.Draw(img)
+    frame = (212, 56, 78, 255)
+    frame_hi = (255, 136, 152, 255)
+    lens = (204, 238, 255, 115)
+    for cx in (-8, 8):
+        rect(d, cx - 5, -165, 10, 8, lens)
+        d.rectangle([OX + cx - 6, OY - 166, OX + cx + 5, OY - 157], outline=frame, width=2)
+        line(d, (cx - 4, -164), (cx - 2, -164), WHITE, 1)
+        line(d, (cx - 4, -166), (cx + 3, -166), frame_hi, 1)
+    # Bridge & temples
+    line(d, (-2, -162), (2, -162), frame, 2)
+    line(d, (-15, -163), (-14, -163), frame, 2)
+    line(d, (14, -163), (15, -163), frame, 2)
+    return img
+
+
+def build_acc_ears():
+    """Wearable cute plush cat-ear headband on head canvas (CW, CH)."""
+    img = new_char()
+    d = ImageDraw.Draw(img)
+    ear_dark = (46, 34, 52, 255)
+    ear_hi = (78, 60, 88, 255)
+    ear_in = (248, 148, 178, 255)
+    # Thin headband arc across crown
+    pts = bezier((-15, -182), (0, -193), (15, -182), 12)
+    for i in range(len(pts) - 1):
+        line(d, pts[i], pts[i + 1], ear_dark, 2)
+    # Left & right cat ears
+    for s in (-1, 1):
+        poly(d, [(s * 14, -184), (s * 15, -202), (s * 4, -189)], ear_dark)
+        poly(d, [(s * 12, -186), (s * 13, -197), (s * 6, -189)], ear_in)
+        line(d, (s * 14, -199), (s * 6, -189), ear_hi, 1)
+    return sel_out(img)
+
+
+def build_item_glasses():
+    """Draggable cosplay glasses prop (32x16) from top nightstand drawer."""
+    img = Image.new("RGBA", (32, 16), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    frame = (212, 56, 78, 255)
+    lens = (204, 238, 255, 200)
+    d.rectangle([2, 3, 13, 12], fill=lens, outline=frame, width=2)
+    d.rectangle([18, 3, 29, 12], fill=lens, outline=frame, width=2)
+    d.line([(13, 6), (18, 6)], fill=frame, width=2)
+    d.line([(4, 5), (7, 5)], fill=WHITE, width=1)
+    d.line([(20, 5), (23, 5)], fill=WHITE, width=1)
+    return sel_out(img)
+
+
+def build_item_camera():
+    """Draggable retro silver & dark-leather camera (30x22) from bottom nightstand drawer."""
+    img = Image.new("RGBA", (30, 22), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    # Top silver plate + shutter button + flash
+    d.rectangle([4, 3, 25, 8], fill=(216, 220, 232, 255))
+    d.rectangle([6, 1, 11, 3], fill=(236, 108, 122, 255))
+    d.rectangle([19, 4, 24, 7], fill=(255, 246, 186, 255))
+    # Dark leather camera body
+    d.rounded_rectangle([3, 7, 26, 19], radius=2, fill=(56, 48, 64, 255))
+    # Lens barrel & glossy blue glass
+    d.ellipse([9, 7, 20, 18], fill=(176, 182, 198, 255))
+    d.ellipse([11, 9, 18, 16], fill=(64, 112, 164, 255))
+    d.rectangle([12, 10, 14, 12], fill=WHITE)
+    return sel_out(img)
+
+
+def build_rps_icon(kind):
+    """Crisp 28x28 16-bit pixel gesture icons for Rock-Paper-Scissors minigame."""
+    img = Image.new("RGBA", (28, 28), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    if kind == "rock":
+        # Cute closed fist
+        d.rounded_rectangle([6, 8, 22, 22], radius=5, fill=SKIN)
+        d.rectangle([7, 17, 21, 21], fill=SKIN_SH)
+        for fx in (10, 14, 18):
+            d.line([(fx, 8), (fx, 14)], fill=SKIN_D, width=1)
+        d.rounded_rectangle([5, 13, 13, 18], radius=2, fill=SKIN_HI)
+    elif kind == "paper":
+        # Open palm with 5 fingers
+        d.rounded_rectangle([7, 13, 21, 23], radius=4, fill=SKIN)
+        for fx, top in ((7, 6), (11, 4), (15, 4), (19, 7)):
+            d.rounded_rectangle([fx, top, fx + 3, 15], radius=1, fill=SKIN)
+        d.rounded_rectangle([4, 13, 8, 20], radius=2, fill=SKIN_HI)
+        d.rectangle([8, 19, 20, 22], fill=SKIN_SH)
+    else:
+        # Peace / Scissors V-sign!
+        d.rounded_rectangle([7, 14, 21, 23], radius=4, fill=SKIN)
+        d.polygon([(9, 15), (6, 4), (10, 4), (13, 15)], fill=SKIN)
+        d.polygon([(14, 15), (17, 4), (21, 4), (18, 15)], fill=SKIN)
+        d.rounded_rectangle([14, 14, 21, 19], radius=2, fill=SKIN_SH)
+        d.rounded_rectangle([6, 15, 13, 20], radius=2, fill=SKIN_HI)
+    return sel_out(img)
+
+
+def build_sky_patch(mode):
+    """Standalone 108x100 window sky surface for smooth real-time crossfade lerp."""
+    img = Image.new("RGBA", (108, 100), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    palettes = [
+        ((106, 174, 240), (186, 224, 252)),
+        ((82, 58, 132), (252, 174, 104)),
+        ((14, 18, 46), (42, 42, 86)),
+    ]
+    top, bot = palettes[mode]
+    for y in range(100):
+        f = y / 99.0
+        if mode == 1:
+            mid = (232, 114, 118)
+            c = lerp_c(top + (255,), mid + (255,), f * 2) if f < 0.5 else lerp_c(mid + (255,), bot + (255,), (f - 0.5) * 2)
+        else:
+            c = lerp_c(top + (255,), bot + (255,), f)
+        d.line([(0, y), (107, y)], fill=c[:3])
+    if mode == 0:
+        for cx, cy, cw, ch in ((10, 18, 30, 8), (58, 38, 36, 9), (22, 66, 24, 7)):
+            d.rounded_rectangle([cx, cy, cx + cw, cy + ch], radius=4, fill=(252, 252, 255))
+            d.rounded_rectangle([cx + 6, cy - 5, cx + cw - 6, cy + 3], radius=3, fill=(255, 255, 255))
+    elif mode == 1:
+        d.ellipse([56, 72, 88, 104], fill=(255, 228, 144))
+        d.rectangle([0, 90, 108, 100], fill=(134, 72, 106))
+    else:
+        rnd = random.Random(11)
+        for _ in range(28):
+            sx, sy = rnd.randint(2, 105), rnd.randint(2, 86)
+            col = (255, 250, 210) if rnd.random() > 0.4 else (190, 210, 255)
+            d.rectangle([sx, sy, sx + 1, sy + 1], fill=col)
+        d.ellipse([72, 14, 92, 34], fill=(252, 246, 206))
+        d.ellipse([77, 11, 95, 29], fill=top)
+    # Window mullions
+    d.rectangle([52, 0, 56, 100], fill=(230, 220, 206))
+    d.rectangle([0, 48, 108, 52], fill=(230, 220, 206))
+    d.rectangle([52, 0, 53, 100], fill=(186, 172, 156))
+    d.rectangle([0, 51, 108, 52], fill=(186, 172, 156))
+    return img
+
+
 def build_night_lamp_glow():
-    """Standalone warm lamp glow overlay (640x360) for runtime toggling of lamp ON/OFF!"""
     return make_lamp_glow((606, 162), 290)
 
 
 def generate_all():
-    for outfit in (0, 1, 2):
+    for outfit in (0, 1, 2, 3):
         build_legs(outfit, air=False).save(os.path.join(ASSETS, f"legs_{outfit}_stand.png"))
         build_legs(outfit, air=True).save(os.path.join(ASSETS, f"legs_{outfit}_air.png"))
         build_lower_garment(outfit).save(os.path.join(ASSETS, f"skirt_{outfit}.png"))
@@ -1108,24 +1301,34 @@ def generate_all():
     for emo in ("normal", "pet", "blush", "smug", "surprised", "sleepy", "pout", "starry", "blink"):
         build_face(emo).save(os.path.join(ASSETS, f"face_{emo}.png"))
 
+    build_acc_glasses().save(os.path.join(ASSETS, "acc_glasses.png"))
+    build_acc_ears().save(os.path.join(ASSETS, "acc_ears.png"))
+
     build_hair_back().save(os.path.join(ASSETS, "hair_back.png"))
     build_hair_side(-1).save(os.path.join(ASSETS, "hair_front_l.png"))
     build_hair_side(1).save(os.path.join(ASSETS, "hair_front_r.png"))
     build_hair_bangs().save(os.path.join(ASSETS, "hair_bangs.png"))
+
     build_pillow().save(os.path.join(ASSETS, "pillow.png"))
     build_boba().save(os.path.join(ASSETS, "boba.png"))
+    build_item_glasses().save(os.path.join(ASSETS, "item_glasses.png"))
+    build_item_camera().save(os.path.join(ASSETS, "item_camera.png"))
     build_curtain_panel(86, 132).save(os.path.join(ASSETS, "curtain_panel.png"))
     for i in range(3):
         build_poster(i).save(os.path.join(ASSETS, f"poster_{i}.png"))
-    build_drawer_open("glasses").save(os.path.join(ASSETS, "drawer_top_open.png"))
-    build_drawer_open("mag").save(os.path.join(ASSETS, "drawer_bot_open.png"))
+    build_drawer_open().save(os.path.join(ASSETS, "drawer_open.png"))
     build_night_lamp_glow().save(os.path.join(ASSETS, "lamp_glow.png"))
 
-    for mode, name in ((0, "day"), (1, "sunset"), (2, "evening")):
-        build_room(mode, False).save(os.path.join(ASSETS, f"room_{name}.png"))
-        build_room(mode, True).save(os.path.join(ASSETS, f"room_{name}_open.png"))
+    for kind in ("rock", "paper", "scissors"):
+        build_rps_icon(kind).save(os.path.join(ASSETS, f"rps_{kind}.png"))
 
-    print("Generated 8 emotions, interactive curtains/props & room assets in", ASSETS)
+    # Neutral base room + standalone sky patches for buttery-smooth lighting lerp!
+    build_room(0, False).save(os.path.join(ASSETS, "room_base.png"))
+    build_room(0, True).save(os.path.join(ASSETS, "room_base_open.png"))
+    for mode, name in ((0, "day"), (1, "sunset"), (2, "night")):
+        build_sky_patch(mode).save(os.path.join(ASSETS, f"sky_{name}.png"))
+
+    print("Generated v0.2-beta assets (4 outfits, 2 accessories, camera/glasses, RPS, lerp skies) in", ASSETS)
 
 
 if __name__ == "__main__":

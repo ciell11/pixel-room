@@ -3,6 +3,7 @@ build/
 dist/
 *.spec
 icon.png
+save.json
 
 # Python bytecode & virtualenvs
 __pycache__/
